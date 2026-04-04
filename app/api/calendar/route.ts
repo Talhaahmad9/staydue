@@ -89,7 +89,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     const uniqueDeadlines = Array.from(
       new Map(deadlines.map((deadline) => [deadline.sourceEventId, deadline])).values()
     );
-    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+    
+    let userObjectId: mongoose.Types.ObjectId;
+    try {
+      userObjectId = new mongoose.Types.ObjectId(session.user.id);
+    } catch (objectIdError) {
+      console.error("[api/calendar/objectid]", objectIdError instanceof Error ? objectIdError.message : String(objectIdError));
+      return jsonError(500, "Invalid user session. Please log in again.", "INVALID_USER_ID");
+    }
 
     try {
       await connectToDatabase();
@@ -115,7 +122,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     try {
       await UserModel.updateOne(
-        { _id: session.user.id },
+        { _id: userObjectId },
         {
           $set: userUpdates,
         }

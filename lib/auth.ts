@@ -42,6 +42,7 @@ const providers: NextAuthOptions["providers"] = [
 				Google({
 					clientId: process.env.GOOGLE_CLIENT_ID,
 					clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+					allowDangerousEmailAccountLinking: true,
 				}),
 			]
 		: []),
@@ -56,6 +57,50 @@ export const authOptions: NextAuthOptions = {
 		strategy: "jwt",
 	},
 	callbacks: {
+		async signIn({ user, account }) {
+			// For Google OAuth users, create or fetch the MongoDB user document
+			if (account?.provider === "google") {
+				if (!user.email) {
+					console.error("[auth/signIn/google] No email from Google provider");
+					return false;
+				}
+
+				await connectToDatabase();
+
+				const existingUser = await UserModel.findOne({ email: user.email }).lean();
+				if (existingUser) {
+					// Update user's name if it changed
+					user.id = existingUser._id.toString();
+					if (existingUser.name !== user.name) {
+						await UserModel.updateOne(
+							{ _id: existingUser._id },
+							{ $set: { name: user.name || "User" } }
+						);
+					}
+					return true;
+				}
+
+				// Create new user for Google OAuth
+				try {
+					const newUser = await UserModel.create({
+						name: user.name || "User",
+						email: user.email,
+						passwordHash: "", // Google users don't have passwords
+						timezone: "Asia/Karachi",
+						hasCompletedOnboarding: false,
+					});
+					const createdUser = newUser.toObject();
+					user.id = (createdUser as { _id: { toString(): string } })._id.toString();
+					return true;
+				} catch (createError) {
+					console.error("[auth/signIn/google]", createError instanceof Error ? createError.message : String(createError));
+					return false;
+				}
+			}
+
+			// For other providers, user.id should already be set by the authorize callback
+			return true;
+		},
 		async jwt({ token, user }) {
 			if (user) {
 				token.id = user.id;
@@ -65,7 +110,7 @@ export const authOptions: NextAuthOptions = {
 		},
 		async session({ session, token }) {
 			if (session.user && token.id) {
-				session.user.id = token.id;
+				session.user.id = token.id as string;
 			}
 
 			return session;
