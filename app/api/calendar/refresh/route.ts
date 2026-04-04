@@ -98,11 +98,12 @@ export async function POST(): Promise<NextResponse> {
                 catalogYear: user.admissionYear,
                 description: deadline.description,
                 dueDate: deadline.dueDate,
-                status: "upcoming",
               },
               $setOnInsert: {
                 userId: userObjectId,
+                status: "upcoming",
                 isCompleted: false,
+                createdAt: new Date(),
               },
             },
             upsert: true,

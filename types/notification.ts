@@ -21,3 +21,27 @@ export interface NotificationLog {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type ReminderInterval = "3-day" | "1-day" | "day-of";
+
+export interface UpcomingDeadlineSummary {
+  title: string;
+  courseCode: string;
+  dueDate: string;
+  urgency: "today" | "tomorrow" | "3-day" | "upcoming";
+}
+
+export interface DeadlineNotificationPayload {
+  deadlineId: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  deadline: {
+    title: string;
+    courseCode: string;
+    courseTitle: string;
+    dueDate: string;
+    interval: ReminderInterval;
+    allUpcoming: UpcomingDeadlineSummary[];
+  };
+}

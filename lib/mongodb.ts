@@ -23,10 +23,15 @@ interface DeadlineDocument {
   description?: string;
   dueDate: Date;
   sourceEventId: string;
+  // isCompleted: self-reported by user via dashboard, email link, or WhatsApp reply
+  // Never overwritten by calendar resync
+  // Used to suppress all reminders (email + WhatsApp) when true
   isCompleted: boolean;
   status: "upcoming" | "done" | "overdue";
   doneAt?: Date;
   overdueNotifiedAt?: Date;
+  overdueNotificationCount: number;
+  reminderSentDates: Date[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,6 +79,8 @@ const deadlineSchema = new Schema<DeadlineDocument>(
     status: { type: String, enum: ["upcoming", "done", "overdue"], required: true, default: "upcoming", index: true },
     doneAt: { type: Date, required: false },
     overdueNotifiedAt: { type: Date, required: false },
+    overdueNotificationCount: { type: Number, required: true, default: 0 },
+    reminderSentDates: { type: [Date], required: true, default: [] },
   },
   { timestamps: true }
 );
