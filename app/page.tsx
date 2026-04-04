@@ -1,3 +1,4 @@
+import Image from "next/image";
 import PageTransition from "@/components/shared/PageTransition";
 import NavbarButton from "@/components/shared/NavbarButton";
 
@@ -5,7 +6,16 @@ export default function Home(): React.ReactElement {
   return (
     <PageTransition>
       <nav className="h-14 border-b border-line/50 bg-page-surface/80 backdrop-blur-sm sticky top-0 z-50 flex items-center px-6 gap-4">
-        <div className="text-sm font-medium text-text-primary">StayDue</div>
+        <div className="w-40 sm:w-56 md:w-64 h-auto">
+          <Image
+            src="/staydue_logo.svg"
+            alt="StayDue"
+            width={160}
+            height={54}
+            priority
+            className="w-full h-auto"
+          />
+        </div>
         <div className="ml-auto flex items-center gap-3">
           <NavbarButton href="/login" variant="secondary">
             Sign in

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -28,8 +29,15 @@ export default function DashboardSidebar({
     <>
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-page-surface border-r border-line/50 p-6">
-        <div className="mb-8">
-          <h2 className="text-sm font-medium text-text-primary">StayDue</h2>
+        <div className="mb-8 w-64 h-auto">
+          <Image
+            src="/staydue_logo.svg"
+            alt="StayDue"
+            width={160}
+            height={54}
+            priority
+            className="w-full h-auto"
+          />
         </div>
 
         <nav className="flex-1 space-y-3">

@@ -20,7 +20,9 @@ const providers: NextAuthOptions["providers"] = [
 			}
 
 			await connectToDatabase();
-			const user = await UserModel.findOne({ email: parsed.data.email }).lean();
+			const user = await UserModel.findOne({
+				email: parsed.data.email.toLowerCase().trim(),
+			}).lean();
 			if (!user) {
 				return null;
 			}
@@ -65,9 +67,11 @@ export const authOptions: NextAuthOptions = {
 					return false;
 				}
 
+				const normalizedEmail = user.email.toLowerCase().trim();
+
 				await connectToDatabase();
 
-				const existingUser = await UserModel.findOne({ email: user.email }).lean();
+				const existingUser = await UserModel.findOne({ email: normalizedEmail }).lean();
 				if (existingUser) {
 					// Update user's name if it changed
 					user.id = existingUser._id.toString();
@@ -84,7 +88,7 @@ export const authOptions: NextAuthOptions = {
 				try {
 					const newUser = await UserModel.create({
 						name: user.name || "User",
-						email: user.email,
+						email: normalizedEmail,
 						passwordHash: "", // Google users don't have passwords
 						timezone: "Asia/Karachi",
 						hasCompletedOnboarding: false,
@@ -93,7 +97,25 @@ export const authOptions: NextAuthOptions = {
 					user.id = (createdUser as { _id: { toString(): string } })._id.toString();
 					return true;
 				} catch (createError) {
-					console.error("[auth/signIn/google]", createError instanceof Error ? createError.message : String(createError));
+					// Handle duplicate key error (race condition)
+					if (
+						createError instanceof Error &&
+						"code" in createError &&
+						(createError as { code: number }).code === 11000
+					) {
+						// Race condition — user was created between our check and insert
+						const retryUser = await UserModel.findOne({
+							email: normalizedEmail,
+						}).lean();
+						if (retryUser) {
+							user.id = retryUser._id.toString();
+							return true;
+						}
+					}
+					console.error(
+						"[auth/signIn/google]",
+						createError instanceof Error ? createError.message : String(createError)
+					);
 					return false;
 				}
 			}
