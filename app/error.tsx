@@ -14,22 +14,22 @@ export default function Error({ error, reset }: ErrorProps): React.ReactElement 
   }, [error]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-      <p className="mb-3 text-sm font-medium text-red-500">Something went wrong</p>
-      <h1 className="mb-3 text-3xl font-medium text-gray-900">We ran into a problem</h1>
-      <p className="mb-8 max-w-sm text-gray-500">
-        Please try again. If the issue continues, contact support.
+    <main className="min-h-screen bg-page-bg flex flex-col items-center justify-center px-4 text-center">
+      <p className="mb-3 text-sm font-medium text-urgency-todayText">Something went wrong</p>
+      <h1 className="mb-3 text-2xl font-medium text-text-primary">We ran into a problem</h1>
+      <p className="mb-8 max-w-sm text-text-secondary">
+        This wasn&apos;t supposed to happen. Please try again — if the issue continues, reach out to us.
       </p>
       <div className="flex gap-3">
         <button
           onClick={reset}
-          className="rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-700"
+          className="rounded-lg bg-brand hover:bg-brand-hover px-5 py-2.5 text-sm font-medium text-white transition-colors"
         >
           Try again
         </button>
         <Link
           href="/"
-          className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          className="rounded-lg border border-line hover:border-line-strong hover:bg-page-hover px-5 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
         >
           Go home
         </Link>

@@ -24,6 +24,9 @@ interface DeadlineDocument {
   dueDate: Date;
   sourceEventId: string;
   isCompleted: boolean;
+  status: "upcoming" | "done" | "overdue";
+  doneAt?: Date;
+  overdueNotifiedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,6 +71,9 @@ const deadlineSchema = new Schema<DeadlineDocument>(
     dueDate: { type: Date, required: true, index: true },
     sourceEventId: { type: String, required: true },
     isCompleted: { type: Boolean, required: true, default: false },
+    status: { type: String, enum: ["upcoming", "done", "overdue"], required: true, default: "upcoming", index: true },
+    doneAt: { type: Date, required: false },
+    overdueNotifiedAt: { type: Date, required: false },
   },
   { timestamps: true }
 );
@@ -89,7 +95,6 @@ const courseCatalogSchema = new Schema<CourseCatalogDocument>(
 
 deadlineSchema.index({ userId: 1, sourceEventId: 1 }, { unique: true });
 deadlineSchema.index({ userId: 1, courseCode: 1 });
-courseCatalogSchema.index({ catalogYear: 1 }, { unique: true });
 
 const globalWithMongoose = globalThis as typeof globalThis & {
   mongooseConnection?: Promise<typeof mongoose>;

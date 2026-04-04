@@ -4,16 +4,28 @@ interface SpinnerProps {
   size?: "sm" | "md" | "lg";
 }
 
-const spinnerSizes: Record<NonNullable<SpinnerProps["size"]>, string> = {
-  sm: "h-4 w-4",
-  md: "h-6 w-6",
-  lg: "h-8 w-8",
+const sizes = {
+  sm: "w-1.5 h-1.5",
+  md: "w-2 h-2",
+  lg: "w-3 h-3",
+};
+
+const gaps = {
+  sm: "gap-1",
+  md: "gap-1.5",
+  lg: "gap-2",
 };
 
 export default function Spinner({ size = "md" }: SpinnerProps): React.ReactElement {
   return (
-    <span
-      className={`inline-block ${spinnerSizes[size]} animate-spin rounded-full border-2 border-teal-600 border-t-transparent`}
-    />
+    <span className={`flex items-center ${gaps[size]}`}>
+      {[0, 200, 400].map((delay) => (
+        <span
+          key={delay}
+          className={`${sizes[size]} rounded-full bg-brand animate-dot-pulse`}
+          style={{ animationDelay: `${delay}ms` }}
+        />
+      ))}
+    </span>
   );
 }

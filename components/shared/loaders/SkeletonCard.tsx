@@ -1,9 +1,9 @@
 export default function SkeletonCard(): React.ReactElement {
   return (
-    <div className="animate-pulse rounded-xl border border-gray-100 p-4">
-      <div className="mb-3 h-4 w-3/4 rounded bg-gray-200" />
-      <div className="mb-2 h-3 w-1/2 rounded bg-gray-200" />
-      <div className="h-3 w-1/4 rounded bg-gray-200" />
+    <div className="bg-page-card border border-line/50 rounded-xl p-4 animate-pulse">
+      <div className="h-3 bg-line rounded w-3/4 mb-3" />
+      <div className="h-2.5 bg-line rounded w-1/2 mb-2" />
+      <div className="h-2.5 bg-line rounded w-1/3" />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 export type DeadlineUrgency = "today" | "tomorrow" | "upcoming";
+export type DeadlineStatus = "upcoming" | "done" | "overdue";
 
 export interface Deadline {
   id: string;
@@ -12,6 +13,9 @@ export interface Deadline {
   dueDate: Date;
   sourceEventId: string;
   isCompleted: boolean;
+  status: DeadlineStatus;
+  doneAt?: Date;
+  overdueNotifiedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

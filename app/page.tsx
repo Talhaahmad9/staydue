@@ -1,44 +1,65 @@
-import Link from "next/link";
+import PageTransition from "@/components/shared/PageTransition";
+import NavbarButton from "@/components/shared/NavbarButton";
 
 export default function Home(): React.ReactElement {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-10">
-      <section className="grid w-full gap-10 rounded-3xl border border-teal-100 bg-gradient-to-br from-white via-teal-50 to-cyan-50 p-8 md:grid-cols-2 md:p-12">
-        <div className="space-y-5">
-          <p className="inline-block rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-800">
-            StayDue
-          </p>
-          <h1 className="text-4xl font-semibold leading-tight text-gray-900 md:text-5xl">
-            Never miss a university deadline again.
-          </h1>
-          <p className="max-w-lg text-base text-gray-600">
-            Connect your Moodle calendar and get assignment deadlines organized in one dashboard,
-            then receive reminders before due dates.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/signup"
-              className="rounded-lg bg-teal-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-700"
-            >
-              Create account
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              Sign in
-            </Link>
+    <PageTransition>
+      <nav className="h-14 border-b border-line/50 bg-page-surface/80 backdrop-blur-sm sticky top-0 z-50 flex items-center px-6 gap-4">
+        <div className="text-sm font-medium text-text-primary">StayDue</div>
+        <div className="ml-auto flex items-center gap-3">
+          <NavbarButton href="/login" variant="secondary">
+            Sign in
+          </NavbarButton>
+          <NavbarButton href="/signup" variant="primary">
+            Create account
+          </NavbarButton>
+        </div>
+      </nav>
+      <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-12 md:py-16">
+        <section className="space-y-8">
+          <div className="space-y-4">
+            <p className="text-xs uppercase tracking-widest text-text-muted font-medium">
+              Student Deadline Manager
+            </p>
+            <h1 className="text-3xl md:text-4xl font-medium leading-tight text-text-primary">
+              Never miss a university deadline again.
+            </h1>
+            <p className="max-w-2xl text-base text-text-secondary leading-relaxed">
+              Connect your Moodle calendar and get assignment deadlines organized in one dashboard, then receive reminders via WhatsApp and email before due dates.
+            </p>
           </div>
-        </div>
-        <div className="rounded-2xl border border-white/80 bg-white/70 p-6 shadow-sm backdrop-blur">
-          <h2 className="text-lg font-semibold text-gray-900">First milestone in progress</h2>
-          <ul className="mt-4 space-y-3 text-sm text-gray-600">
-            <li>Credential authentication and session setup</li>
-            <li>Moodle calendar import endpoint with ICS parsing</li>
-            <li>Deadline dashboard with urgency highlighting</li>
-          </ul>
-        </div>
-      </section>
-    </main>
+
+          <div className="flex flex-wrap gap-3 pt-4">
+            <NavbarButton href="/signup" variant="primary">
+              Get started
+            </NavbarButton>
+            <NavbarButton href="/login" variant="secondary">
+              Sign in
+            </NavbarButton>
+          </div>
+        </section>
+
+        <section className="mt-16 pb-12">
+          <h2 className="text-lg font-medium text-text-primary mb-6">How it works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-page-card border border-line/50 rounded-xl p-5">
+              <p className="text-sm font-medium text-text-muted mb-2">Step 1</p>
+              <h3 className="text-base font-medium text-text-primary mb-2">Connect Moodle</h3>
+              <p className="text-sm text-text-secondary">Paste your Moodle calendar export URL to fetch all your assignments.</p>
+            </div>
+            <div className="bg-page-card border border-line/50 rounded-xl p-5">
+              <p className="text-sm font-medium text-text-muted mb-2">Step 2</p>
+              <h3 className="text-base font-medium text-text-primary mb-2">View Dashboard</h3>
+              <p className="text-sm text-text-secondary">See all your deadlines organized by urgency in a single view.</p>
+            </div>
+            <div className="bg-page-card border border-line/50 rounded-xl p-5">
+              <p className="text-sm font-medium text-text-muted mb-2">Step 3</p>
+              <h3 className="text-base font-medium text-text-primary mb-2">Get Reminders</h3>
+              <p className="text-sm text-text-secondary">Receive WhatsApp and email notifications before your assignments are due.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </PageTransition>
   );
 }

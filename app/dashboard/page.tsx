@@ -1,32 +1,11 @@
 import { redirect } from "next/navigation";
 
 import DeadlineList from "@/components/dashboard/DeadlineList";
+import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+import PageTransition from "@/components/shared/PageTransition";
 import { auth } from "@/lib/auth";
-import { DeadlineModel, UserModel, connectToDatabase } from "@/lib/mongodb";
-
-interface DashboardDeadline {
-  id: string;
-  title: string;
-  courseCode: string;
-  courseTitle: string;
-  dueDate: string;
-}
-
-async function getDeadlines(userId: string): Promise<DashboardDeadline[]> {
-  await connectToDatabase();
-  const documents = await DeadlineModel.find({ userId, isCompleted: false })
-    .sort({ dueDate: 1 })
-    .limit(200)
-    .lean();
-
-  return documents.map((document) => ({
-    id: document._id.toString(),
-    title: document.title,
-    courseCode: document.courseCode ?? document.course,
-    courseTitle: document.courseTitle ?? "Uncategorized",
-    dueDate: document.dueDate.toISOString(),
-  }));
-}
+import { UserModel, connectToDatabase } from "@/lib/mongodb";
+import { getDeadlinesForUser } from "@/lib/deadlines";
 
 export default async function DashboardPage(): Promise<React.ReactElement> {
   const session = await auth();
@@ -40,17 +19,37 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     redirect("/onboarding");
   }
 
-  const deadlines = await getDeadlines(session.user.id);
+  const { active, overdue, done } = await getDeadlinesForUser(session.user.id);
+  const userInitials = (session.user.name ?? "U")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-6xl px-4 py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-gray-900">Your deadlines</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Stay on top of coursework with urgency-sorted reminders.
-        </p>
+    <PageTransition>
+      <div className="flex min-h-screen bg-page-bg lg:bg-page-surface">
+        <DashboardSidebar userInitials={userInitials} userName={session.user.name ?? "User"} />
+
+        <div className="flex-1 flex flex-col lg:bg-page-bg">
+          <nav className="h-14 border-b border-line/50 bg-page-surface/80 backdrop-blur-sm sticky top-0 z-40 flex items-center px-4 sm:px-6 gap-4 lg:bg-page-bg lg:border-line">
+            <h1 className="text-lg font-medium text-text-primary">Your deadlines</h1>
+            <div className="ml-auto flex items-center gap-3">
+              <a
+                href="/settings"
+                className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Settings
+              </a>
+            </div>
+          </nav>
+
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <DeadlineList deadlines={active} overdueDeadlines={overdue} doneDeadlines={done} />
+          </main>
+        </div>
       </div>
-      <DeadlineList deadlines={deadlines} />
-    </main>
+    </PageTransition>
   );
 }

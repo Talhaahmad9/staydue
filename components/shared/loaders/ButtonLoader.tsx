@@ -2,6 +2,14 @@
 
 export default function ButtonLoader(): React.ReactElement {
   return (
-    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+    <span className="flex items-center gap-1">
+      {[0, 200, 400].map((delay) => (
+        <span
+          key={delay}
+          className="w-1.5 h-1.5 rounded-full bg-current animate-dot-pulse"
+          style={{ animationDelay: `${delay}ms` }}
+        />
+      ))}
+    </span>
   );
 }

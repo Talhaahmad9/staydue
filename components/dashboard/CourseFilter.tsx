@@ -11,24 +11,26 @@ export default function CourseFilter({
   selectedCourse,
   onChange,
 }: CourseFilterProps): React.ReactElement {
+  const allCourses = [
+    { value: "all", label: "All" },
+    ...courses,
+  ];
+
   return (
-    <div className="w-full max-w-xs">
-      <label htmlFor="course-filter" className="mb-2 block text-sm font-medium text-gray-700">
-        Filter by course
-      </label>
-      <select
-        id="course-filter"
-        value={selectedCourse}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-teal-600"
-      >
-        <option value="all">All courses</option>
-        {courses.map((course) => (
-          <option key={course.value} value={course.value}>
-            {course.label}
-          </option>
-        ))}
-      </select>
+    <div className="flex overflow-x-auto gap-2 -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2">
+      {allCourses.map((course) => (
+        <button
+          key={course.value}
+          onClick={() => onChange(course.value)}
+          className={`whitespace-nowrap px-4 py-2 rounded-full border text-xs font-medium transition-colors ${
+            selectedCourse === course.value
+              ? "bg-brand-light border-brand/40 text-brand"
+              : "bg-page-card border-line/50 text-text-muted hover:border-line-strong"
+          }`}
+        >
+          {course.label}
+        </button>
+      ))}
     </div>
   );
 }

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
 import ButtonLoader from "@/components/shared/loaders/ButtonLoader";
-import Spinner from "@/components/shared/loaders/Spinner";
 
 function calculatePasswordStrength(password: string): { score: number; label: string; color: string } {
   let score = 0;
@@ -18,9 +17,9 @@ function calculatePasswordStrength(password: string): { score: number; label: st
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
-  if (score <= 2) return { score, label: "Weak", color: "bg-red-500" };
-  if (score <= 4) return { score, label: "Fair", color: "bg-yellow-500" };
-  return { score, label: "Strong", color: "bg-teal-600" };
+  if (score <= 2) return { score, label: "Weak", color: "bg-urgency-today" };
+  if (score <= 4) return { score, label: "Fair", color: "bg-urgency-tomorrow" };
+  return { score, label: "Strong", color: "bg-brand" };
 }
 
 export default function SignupForm(): React.ReactElement {
@@ -31,15 +30,16 @@ export default function SignupForm(): React.ReactElement {
   const [password, setPassword] = useState("");
   const passwordStrength = password ? calculatePasswordStrength(password) : null;
 
-  async function onSubmit(formData: FormData): Promise<void> {
+  async function handleFormSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
     let shouldResetLoading = true;
     setLoading(true);
     setError(null);
 
     try {
       const payload = {
-        name: String(formData.get("name") ?? ""),
-        email: String(formData.get("email") ?? ""),
+        name: String((e.currentTarget.elements.namedItem("name") as HTMLInputElement)?.value ?? ""),
+        email: String((e.currentTarget.elements.namedItem("email") as HTMLInputElement)?.value ?? ""),
         password: password,
       };
 
@@ -92,55 +92,45 @@ export default function SignupForm(): React.ReactElement {
   }
 
   return (
-    <>
-      {loading ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/85 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-5 text-slate-900 shadow-lg shadow-slate-200/50">
-            <Spinner size="lg" />
-            <p className="text-sm font-medium">Creating your account...</p>
-          </div>
-        </div>
-      ) : null}
-
-      <form
-        action={onSubmit}
-        className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/50 transition-all duration-300 sm:p-8"
-      >
-        <fieldset disabled={loading} className="space-y-4 disabled:pointer-events-none disabled:opacity-60">
+    <form
+      onSubmit={handleFormSubmit}
+      className="w-full rounded-xl border border-line/50 bg-page-card p-6 shadow-lg transition-all duration-300 space-y-5"
+    >
+      <div className="space-y-4">
           <div className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Create your account</h1>
-            <p className="text-sm sm:text-base text-slate-600">Start tracking Moodle deadlines in one place.</p>
+            <h2 className="text-xl font-medium text-text-primary">Create your account</h2>
+            <p className="text-sm text-text-secondary">Start tracking Moodle deadlines in one place.</p>
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm sm:text-base font-medium text-slate-700" htmlFor="name">
+            <label className="block text-xs font-medium uppercase tracking-widest text-text-muted" htmlFor="name">
               Name
             </label>
             <input
               id="name"
               name="name"
-              className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm sm:text-base text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-200"
+              className="w-full rounded-lg border border-line bg-page-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
               placeholder="Your full name"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm sm:text-base font-medium text-slate-700" htmlFor="email">
+            <label className="block text-xs font-medium uppercase tracking-widest text-text-muted" htmlFor="email">
               Email
             </label>
             <input
               id="email"
               name="email"
               type="email"
-              className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm sm:text-base text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-200"
+              className="w-full rounded-lg border border-line bg-page-surface px-3 py-2 text-sm text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
               placeholder="you@university.edu"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm sm:text-base font-medium text-slate-700" htmlFor="password">
+            <label className="block text-xs font-medium uppercase tracking-widest text-text-muted" htmlFor="password">
               Password
             </label>
             <div className="relative">
@@ -150,7 +140,7 @@ export default function SignupForm(): React.ReactElement {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 pr-12 text-sm sm:text-base text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-200"
+                className="w-full rounded-lg border border-line bg-page-surface px-3 py-2 pr-10 text-sm text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
                 minLength={8}
                 required
               />
@@ -158,21 +148,25 @@ export default function SignupForm(): React.ReactElement {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={loading}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             {password && (
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm text-slate-600">Password strength:</span>
-                  <span className={`text-xs sm:text-sm font-medium ${passwordStrength?.color === "bg-red-500" ? "text-red-600" : passwordStrength?.color === "bg-yellow-500" ? "text-yellow-600" : "text-teal-600"}`}>
+                  <span className="text-xs text-text-muted">Password strength:</span>
+                  <span className={`text-xs font-medium ${
+                    passwordStrength?.color === "bg-urgency-today" ? "text-urgency-todayText" : 
+                    passwordStrength?.color === "bg-urgency-tomorrow" ? "text-urgency-tomorrowText" : 
+                    "text-brand"
+                  }`}>
                     {passwordStrength?.label}
                   </span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                <div className="h-1 w-full rounded-full bg-line overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${passwordStrength?.color}`}
                     style={{ width: `${((passwordStrength?.score ?? 0) / 6) * 100}%` }}
@@ -182,29 +176,29 @@ export default function SignupForm(): React.ReactElement {
             )}
           </div>
 
-          {error ? <p className="text-sm sm:text-base font-medium text-red-600">{error}</p> : null}
+          {error ? <p className="text-sm font-medium text-urgency-todayText">{error}</p> : null}
 
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm sm:text-base font-semibold text-white transition-all duration-200 hover:bg-teal-700 active:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`flex w-full items-center justify-center gap-2 rounded-lg bg-brand hover:bg-brand-hover px-4 ${loading ? "py-4" : "py-2.5"} text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60`}
           >
             {loading ? <ButtonLoader /> : "Create account"}
           </button>
 
-          <div className="flex items-center gap-3 py-1 text-xs sm:text-sm text-slate-400">
-            <div className="h-px flex-1 bg-slate-300" />
-            <span>OR</span>
-            <div className="h-px flex-1 bg-slate-300" />
+          <div className="flex items-center gap-3 py-1">
+            <div className="h-px flex-1 bg-line" />
+            <span className="text-xs text-text-muted uppercase tracking-widest">or</span>
+            <div className="h-px flex-1 bg-line" />
           </div>
 
           <button
             type="button"
             onClick={signupWithGoogle}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm sm:text-base font-semibold text-slate-700 transition-all duration-200 hover:border-slate-400 hover:bg-white active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`flex w-full items-center justify-center gap-3 rounded-lg border border-line hover:border-line-strong hover:bg-page-hover px-4 ${loading ? "py-4" : "py-2.5"} text-sm font-medium text-text-secondary hover:text-text-primary transition-colors disabled:cursor-not-allowed disabled:opacity-60`}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -212,8 +206,7 @@ export default function SignupForm(): React.ReactElement {
             </svg>
             Continue with Google
           </button>
-        </fieldset>
-      </form>
-    </>
+      </div>
+    </form>
   );
 }
