@@ -4,6 +4,10 @@
 
 export const rateLimitRules: Record<string, { limit: number; windowMs: number }> = {
   // More specific paths first to prevent shadowing by shorter prefixes
+  "/api/auth/verify-email": { limit: 10, windowMs: 60 * 60 * 1000 }, // 10/hr
+  "/api/auth/resend-otp": { limit: 5, windowMs: 60 * 60 * 1000 }, // 5/hr
+  "/api/auth/forgot-password": { limit: 5, windowMs: 60 * 60 * 1000 }, // 5/hr
+  "/api/auth/reset-password": { limit: 5, windowMs: 60 * 60 * 1000 }, // 5/hr
   "/api/auth/signin": { limit: 10, windowMs: 60 * 60 * 1000 }, // 10/hr — NextAuth signin
   "/api/auth": { limit: 5, windowMs: 60 * 60 * 1000 }, // 5/hr  — custom signup
   "/api/calendar/refresh": { limit: 20, windowMs: 60 * 60 * 1000 }, // 20/hr

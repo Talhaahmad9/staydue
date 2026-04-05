@@ -2,6 +2,8 @@ import { Resend } from "resend";
 import { render } from "@react-email/render";
 import ReminderEmail from "@/emails/ReminderEmail";
 import OverdueEmail from "@/emails/OverdueEmail";
+import OtpEmail from "@/emails/OtpEmail";
+import PasswordResetEmail from "@/emails/PasswordResetEmail";
 import { DeadlineNotificationPayload, ReminderInterval } from "@/types/notification";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -91,5 +93,79 @@ function getSubjectLine(interval: ReminderInterval, title: string): string {
       return `Due tomorrow: ${title}`;
     case "day-of":
       return `Due today — don't forget: ${title}`;
+  }
+}
+
+export async function sendOtpEmail(
+  to: string,
+  name: string,
+  otp: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Validate email
+    if (!to || !to.includes("@")) {
+      return { success: false, error: "Invalid email address" };
+    }
+
+    const html = await render(OtpEmail({ otp }));
+
+    const response = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Your StayDue verification code",
+      html,
+    });
+
+    if (response.error) {
+      console.error("[resend/otp/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    console.log("[resend/otp/sent]", {
+      to,
+      messageId: response.data?.id,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/otp]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function sendPasswordResetEmail(
+  to: string,
+  name: string,
+  resetUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Validate email
+    if (!to || !to.includes("@")) {
+      return { success: false, error: "Invalid email address" };
+    }
+
+    const html = await render(PasswordResetEmail({ resetUrl }));
+
+    const response = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Reset your StayDue password",
+      html,
+    });
+
+    if (response.error) {
+      console.error("[resend/reset/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    console.log("[resend/reset/sent]", {
+      to,
+      messageId: response.data?.id,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/reset]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }

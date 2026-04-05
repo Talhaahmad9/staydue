@@ -13,6 +13,11 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     redirect("/login");
   }
 
+  // Check if user is verified
+  if (session.user.isVerified === false) {
+    redirect(`/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`);
+  }
+
   await connectToDatabase();
   const user = await UserModel.findById(session.user.id).lean();
   if (!user?.admissionYear) {

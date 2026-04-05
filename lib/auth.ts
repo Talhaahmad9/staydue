@@ -32,6 +32,11 @@ const providers: NextAuthOptions["providers"] = [
 				return null;
 			}
 
+			// Check if email is verified
+			if (user.isVerified === false) {
+				throw new Error("EMAIL_NOT_VERIFIED");
+			}
+
 			return {
 				id: user._id.toString(),
 				name: user.name,
@@ -73,18 +78,25 @@ export const authOptions: NextAuthOptions = {
 
 				const existingUser = await UserModel.findOne({ email: normalizedEmail }).lean();
 				if (existingUser) {
-					// Update user's name if it changed
+					// Update user's name if it changed, and mark as verified
 					user.id = existingUser._id.toString();
+					const updateData: Record<string, unknown> = {};
 					if (existingUser.name !== user.name) {
+						updateData.name = user.name || "User";
+					}
+					if (existingUser.isVerified !== true) {
+						updateData.isVerified = true;
+					}
+					if (Object.keys(updateData).length > 0) {
 						await UserModel.updateOne(
 							{ _id: existingUser._id },
-							{ $set: { name: user.name || "User" } }
+							{ $set: updateData }
 						);
 					}
 					return true;
 				}
 
-				// Create new user for Google OAuth
+				// Create new user for Google OAuth — always verified
 				try {
 					const newUser = await UserModel.create({
 						name: user.name || "User",
@@ -92,6 +104,7 @@ export const authOptions: NextAuthOptions = {
 						passwordHash: "", // Google users don't have passwords
 						timezone: "Asia/Karachi",
 						hasCompletedOnboarding: false,
+						isVerified: true, // Google has verified the email
 					});
 					const createdUser = newUser.toObject();
 					user.id = (createdUser as { _id: { toString(): string } })._id.toString();
@@ -109,6 +122,13 @@ export const authOptions: NextAuthOptions = {
 						}).lean();
 						if (retryUser) {
 							user.id = retryUser._id.toString();
+							// Ensure verified
+							if (retryUser.isVerified !== true) {
+								await UserModel.updateOne(
+									{ _id: retryUser._id },
+									{ $set: { isVerified: true } }
+								);
+							}
 							return true;
 						}
 					}
@@ -120,6 +140,13 @@ export const authOptions: NextAuthOptions = {
 				}
 			}
 
+			// For credentials provider, handle EMAIL_NOT_VERIFIED error
+			if (account?.provider === "credentials") {
+				// The authorize function will throw EMAIL_NOT_VERIFIED error
+				// We need to check if this is the case and redirect accordingly
+				// This is handled in the error callback
+			}
+
 			// For other providers, user.id should already be set by the authorize callback
 			return true;
 		},
@@ -128,11 +155,25 @@ export const authOptions: NextAuthOptions = {
 				token.id = user.id;
 			}
 
+			// Fetch user from DB to get isVerified status on every token refresh
+			if (token.id) {
+				try {
+					await connectToDatabase();
+					const dbUser = await UserModel.findById(token.id).lean();
+					if (dbUser) {
+						token.isVerified = dbUser.isVerified ?? false;
+					}
+				} catch (error) {
+					console.error("[auth/jwt]", error);
+				}
+			}
+
 			return token;
 		},
 		async session({ session, token }) {
 			if (session.user && token.id) {
 				session.user.id = token.id as string;
+				session.user.isVerified = token.isVerified ?? false;
 			}
 
 			return session;

@@ -32,21 +32,20 @@ export default function SignupForm(): React.ReactElement {
 
   async function handleFormSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
+
+    // Capture form values immediately before any async call
+    const name = String((e.currentTarget.elements.namedItem("name") as HTMLInputElement)?.value ?? "");
+    const email = String((e.currentTarget.elements.namedItem("email") as HTMLInputElement)?.value ?? "");
+
     let shouldResetLoading = true;
     setLoading(true);
     setError(null);
 
     try {
-      const payload = {
-        name: String((e.currentTarget.elements.namedItem("name") as HTMLInputElement)?.value ?? ""),
-        email: String((e.currentTarget.elements.namedItem("email") as HTMLInputElement)?.value ?? ""),
-        password: password,
-      };
-
       const response = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ name, email, password }),
       });
 
       if (!response.ok) {
@@ -55,7 +54,7 @@ export default function SignupForm(): React.ReactElement {
       }
 
       shouldResetLoading = false;
-      router.push("/login?created=true");
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       router.refresh();
     } catch (submitError) {
       setError(

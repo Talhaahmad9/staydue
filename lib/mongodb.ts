@@ -9,6 +9,14 @@ interface UserDocument {
   admissionYear?: string;
   timezone: string;
   hasCompletedOnboarding: boolean;
+  isVerified: boolean;
+  verificationOtp?: string;
+  verificationOtpExpiry?: Date;
+  passwordResetToken?: string;
+  passwordResetTokenExpiry?: Date;
+  isPhoneVerified: boolean;
+  phoneOtp?: string;
+  phoneOtpExpiry?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +68,14 @@ const userSchema = new Schema<UserDocument>(
     admissionYear: { type: String, required: false, trim: true },
     timezone: { type: String, required: true, default: "Asia/Karachi" },
     hasCompletedOnboarding: { type: Boolean, required: true, default: false },
+    isVerified: { type: Boolean, required: true, default: false },
+    verificationOtp: { type: String, required: false },
+    verificationOtpExpiry: { type: Date, required: false },
+    passwordResetToken: { type: String, required: false },
+    passwordResetTokenExpiry: { type: Date, required: false },
+    isPhoneVerified: { type: Boolean, required: true, default: false },
+    phoneOtp: { type: String, required: false },
+    phoneOtpExpiry: { type: Date, required: false },
   },
   { timestamps: true }
 );

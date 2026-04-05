@@ -5,11 +5,21 @@ import LoginForm from "@/components/auth/LoginForm";
 import PageTransition from "@/components/shared/PageTransition";
 import { auth } from "@/lib/auth";
 
-export default async function LoginPage(): Promise<React.ReactElement> {
+interface LoginPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function LoginPage({
+  searchParams,
+}: LoginPageProps): Promise<React.ReactElement> {
   const session = await auth();
   if (session?.user?.id) {
     redirect("/onboarding");
   }
+
+  const params = await searchParams;
+  const verified = params.verified === "true";
+  const reset = params.reset === "true";
 
   return (
     <PageTransition>
@@ -28,6 +38,18 @@ export default async function LoginPage(): Promise<React.ReactElement> {
               </p>
             </div>
 
+            {verified && (
+              <div className="bg-urgency-done border border-urgency-doneBorder text-urgency-doneText text-sm p-3 rounded-lg">
+                Email verified successfully. You can now sign in.
+              </div>
+            )}
+
+            {reset && (
+              <div className="bg-urgency-done border border-urgency-doneBorder text-urgency-doneText text-sm p-3 rounded-lg">
+                Password reset successfully. You can now sign in.
+              </div>
+            )}
+
             <LoginForm />
 
             <p className="text-center text-sm text-text-secondary">
@@ -37,6 +59,15 @@ export default async function LoginPage(): Promise<React.ReactElement> {
                 className="text-brand hover:text-brand-hover font-medium transition-colors"
               >
                 Create an account
+              </Link>
+            </p>
+
+            <p className="text-center text-sm text-text-secondary">
+              <Link
+                href="/forgot-password"
+                className="text-brand hover:text-brand-hover font-medium transition-colors"
+              >
+                Forgot your password?
               </Link>
             </p>
           </section>

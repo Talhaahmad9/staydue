@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { UserModel, connectToDatabase } from "@/lib/mongodb";
 import { sanitizeString } from "@/utils/sanitize";
 import { registerInputSchema } from "@/utils/validate";
+import { generateOtp, hashOtp } from "@/utils/otp";
+import { sendOtpEmail } from "@/lib/resend";
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -29,15 +31,29 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const passwordHash = await hash(parsed.data.password, 12);
 
+    // Generate OTP
+    const otp = generateOtp();
+    const hashedOtp = await hashOtp(otp);
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
     await UserModel.create({
       name: sanitizeString(parsed.data.name, 50),
       email: parsed.data.email,
       passwordHash,
       timezone: "Asia/Karachi",
       hasCompletedOnboarding: false,
+      isVerified: false,
+      verificationOtp: hashedOtp,
+      verificationOtpExpiry: otpExpiry,
     });
 
-    return NextResponse.json({ success: true }, { status: 201 });
+    // Send OTP email
+    await sendOtpEmail(parsed.data.email, parsed.data.name, otp);
+
+    return NextResponse.json(
+      { success: true, requiresVerification: true },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json(
       {

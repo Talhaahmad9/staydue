@@ -31,6 +31,13 @@ export default function LoginForm(): React.ReactElement {
       });
 
       if (!result || result.error) {
+        // Check if error is EMAIL_NOT_VERIFIED
+        if (result?.error === "EMAIL_NOT_VERIFIED") {
+          shouldResetLoading = false;
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          router.refresh();
+          return;
+        }
         setError("Invalid email or password.");
         return;
       }
