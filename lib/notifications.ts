@@ -24,6 +24,11 @@ export async function getDeadlinesNeedingReminder(): Promise<DeadlineNotificatio
     for (const user of users) {
       if (!user.email) continue;
 
+      // Skip if email notifications are disabled
+      if (user.notificationPreferences?.emailEnabled === false) {
+        continue;
+      }
+
       // Get all upcoming deadlines for this user
       const deadlines = await DeadlineModel.find({
         userId: user._id,
@@ -37,7 +42,13 @@ export async function getDeadlinesNeedingReminder(): Promise<DeadlineNotificatio
       for (const deadline of deadlines) {
         const intervals = getIntervalsForDeadline(deadline.dueDate, deadline.reminderSentDates || []);
 
-        for (const interval of intervals) {
+        // Filter intervals based on user preferences
+        const enabledIntervals = intervals.filter((interval) => {
+          const mappedInterval = interval === "day-of" ? "day-of" : interval;
+          return user.notificationPreferences?.reminderIntervals?.includes(mappedInterval) ?? true;
+        });
+
+        for (const interval of enabledIntervals) {
           // Get up to 4 other upcoming deadlines for context
           const otherDeadlines = deadlines.filter((d) => d._id.toString() !== deadline._id.toString()).slice(0, 4);
 

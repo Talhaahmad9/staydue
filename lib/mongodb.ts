@@ -1,5 +1,10 @@
 import mongoose, { Model, Schema } from "mongoose";
 
+interface NotificationPreferences {
+  emailEnabled: boolean;
+  reminderIntervals: string[];
+}
+
 interface UserDocument {
   name: string;
   email: string;
@@ -17,6 +22,7 @@ interface UserDocument {
   isPhoneVerified: boolean;
   phoneOtp?: string;
   phoneOtpExpiry?: Date;
+  notificationPreferences: NotificationPreferences;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,6 +82,14 @@ const userSchema = new Schema<UserDocument>(
     isPhoneVerified: { type: Boolean, required: true, default: false },
     phoneOtp: { type: String, required: false },
     phoneOtpExpiry: { type: Date, required: false },
+    notificationPreferences: {
+      emailEnabled: { type: Boolean, default: true },
+      reminderIntervals: {
+        type: [String],
+        enum: ["3-day", "1-day", "day-of"],
+        default: ["3-day", "1-day", "day-of"],
+      },
+    },
   },
   { timestamps: true }
 );
@@ -145,4 +159,4 @@ export const CourseCatalogModel: Model<CourseCatalogDocument> =
   mongoose.models.CourseCatalog ||
   mongoose.model<CourseCatalogDocument>("CourseCatalog", courseCatalogSchema);
 
-export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry };
+export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry, NotificationPreferences };

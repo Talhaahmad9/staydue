@@ -12,6 +12,7 @@ export const rateLimitRules: Record<string, { limit: number; windowMs: number }>
   "/api/auth": { limit: 5, windowMs: 60 * 60 * 1000 }, // 5/hr  — custom signup
   "/api/calendar/refresh": { limit: 20, windowMs: 60 * 60 * 1000 }, // 20/hr
   "/api/calendar": { limit: 10, windowMs: 60 * 60 * 1000 }, // 10/hr
+  "/api/settings": { limit: 30, windowMs: 60 * 60 * 1000 }, // 30/hr
   "/api/deadlines": { limit: 60, windowMs: 60 * 60 * 1000 }, // 60/hr
 };
 
