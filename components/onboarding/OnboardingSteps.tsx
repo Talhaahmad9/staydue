@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 import CalendarUrlForm from "@/components/onboarding/CalendarUrlForm";
@@ -14,6 +15,15 @@ export default function OnboardingSteps({ admissionYears }: OnboardingStepsProps
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-center mb-6">
+        <Image
+          src="/staydue_logo.svg"
+          alt="StayDue"
+          width={130}
+          height={44}
+          priority
+        />
+      </div>
       <CalendarUrlForm phone={phone} admissionYears={admissionYears} />
       <PhoneNumberForm value={phone} onChange={setPhone} />
     </div>

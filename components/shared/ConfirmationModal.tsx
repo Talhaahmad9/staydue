@@ -27,10 +27,10 @@ export default function ConfirmationModal() {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "revert";
-      };
     }
+    return () => {
+      document.body.style.overflow = "revert";
+    };
   }, [isOpen]);
 
   const handleConfirm = useCallback(async () => {

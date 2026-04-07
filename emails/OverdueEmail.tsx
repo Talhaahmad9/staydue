@@ -10,6 +10,7 @@ import {
   Button,
   Hr,
   Preview,
+  Img,
 } from "@react-email/components";
 import React from "react";
 import { DeadlineNotificationPayload } from "@/types/notification";
@@ -36,20 +37,14 @@ export default function OverdueEmail({ payload }: OverdueEmailProps) {
       >
         <Container style={{ maxWidth: "600px", margin: "0 auto", padding: "24px" }}>
           {/* Header */}
-          <Section style={{ marginBottom: "24px" }}>
-            <Text
-              style={{
-                fontSize: "20px",
-                fontWeight: "500",
-                color: "#0D9488",
-                margin: "0 0 4px 0",
-              }}
-            >
-              StayDue
-            </Text>
-            <Text style={{ fontSize: "12px", color: "#737373", margin: "0" }}>
-              Never miss a deadline.
-            </Text>
+          <Section style={{ marginBottom: "24px", textAlign: "center" }}>
+            <Img
+              src="https://www.staydue.app/staydue_logo.svg"
+              alt="StayDue"
+              width={140}
+              height={47}
+              style={{ display: "block", margin: "0 auto 4px" }}
+            />
           </Section>
 
           {/* Urgency Banner */}

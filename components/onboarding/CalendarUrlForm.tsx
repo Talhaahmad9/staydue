@@ -93,7 +93,7 @@ export default function CalendarUrlForm({
           </option>
           {admissionYears.map((year) => (
             <option key={year} value={year} className="bg-page-surface text-text-primary">
-              {year}
+              {year.split("-")[0]}
             </option>
           ))}
         </select>
