@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import DeadlineList from "@/components/dashboard/DeadlineList";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+import SettingsNavButton from "@/components/dashboard/SettingsNavButton";
+import ProfileDropdown from "@/components/dashboard/ProfileDropdown";
 import { auth } from "@/lib/auth";
 import { UserModel, connectToDatabase } from "@/lib/mongodb";
 import { getDeadlinesForUser } from "@/lib/deadlines";
@@ -39,12 +41,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         <nav className="h-14 border-b border-line/50 bg-page-surface/80 backdrop-blur-sm sticky top-0 z-40 flex items-center px-4 sm:px-6 gap-4 lg:bg-page-bg lg:border-line">
           <h1 className="text-lg font-medium text-text-primary">Your deadlines</h1>
           <div className="ml-auto flex items-center gap-3">
-            <a
-              href="/settings"
-              className="text-sm text-text-secondary hover:text-text-primary transition-colors"
-            >
-              Settings
-            </a>
+            <SettingsNavButton />
+            <div className="lg:hidden">
+              <ProfileDropdown userInitials={userInitials} userName={session.user.name ?? "User"} />
+            </div>
           </div>
         </nav>
 

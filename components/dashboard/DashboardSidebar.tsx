@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import ButtonLoader from "@/components/shared/loaders/ButtonLoader";
 
 interface DashboardSidebarProps {
   userInitials: string;
@@ -15,9 +17,16 @@ export default function DashboardSidebar({
   userName,
 }: DashboardSidebarProps): React.ReactElement {
   const pathname = usePathname();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   async function handleSignOut(): Promise<void> {
-    await signOut({ callbackUrl: "/login" });
+    setIsSigningOut(true);
+    try {
+      await signOut({ callbackUrl: "/login" });
+    } catch (error) {
+      console.error("[dashboard/signout]", error);
+      setIsSigningOut(false);
+    }
   }
 
   const navLinks = [
@@ -68,14 +77,15 @@ export default function DashboardSidebar({
           </div>
           <button
             onClick={handleSignOut}
-            className="w-full text-left px-4 py-2 rounded-lg text-sm text-text-secondary hover:text-urgency-todayText hover:bg-urgency-today/10 transition-colors"
+            disabled={isSigningOut}
+            className="w-full text-left px-4 py-2 rounded-lg text-sm text-text-secondary hover:text-urgency-todayText hover:bg-urgency-today/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-text-secondary disabled:hover:bg-transparent"
           >
-            Sign out
+            {isSigningOut ? <ButtonLoader /> : "Sign out"}
           </button>
         </div>
       </aside>
 
-      {/* Mobile bottom nav - stub for now */}
+      {/* Mobile nav placeholder - profile dropdown rendered in navbar instead */}
       <div className="lg:hidden" />
     </>
   );
