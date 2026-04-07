@@ -173,6 +173,11 @@ export async function getDeadlinesNeedingOverdueNotice(): Promise<DeadlineNotifi
   }
 }
 
+function wasRecentlySent(sentDates: Date[], cooldownMs: number): boolean {
+  const now = Date.now();
+  return sentDates.some((d) => now - d.getTime() < cooldownMs);
+}
+
 function getIntervalsForDeadline(dueDate: Date, reminderSentDates: Date[]): ReminderInterval[] {
   const now = new Date();
   const intervals: ReminderInterval[] = [];
@@ -182,26 +187,27 @@ function getIntervalsForDeadline(dueDate: Date, reminderSentDates: Date[]): Remi
   const msNow = now.getTime();
   const hoursUntilDue = (msDue - msNow) / msPerHour;
 
-  // 3-day interval: between 72hrs and 60hrs from now
-  if (hoursUntilDue >= 60 && hoursUntilDue <= 72) {
-    const lastSent = reminderSentDates[reminderSentDates.length - 1];
-    if (!lastSent || msNow - lastSent.getTime() > 60 * msPerHour) {
+  const threeDayCooldownMs = 36 * msPerHour;
+  const oneDayCooldownMs = 16 * msPerHour;
+  const dayOfCooldownMs = 6 * msPerHour;
+
+  // 3-day interval: between 48hrs and 84hrs from now
+  if (hoursUntilDue >= 48 && hoursUntilDue <= 84) {
+    if (!wasRecentlySent(reminderSentDates, threeDayCooldownMs)) {
       intervals.push("3-day");
     }
   }
 
-  // 1-day interval: between 28hrs and 20hrs from now
-  if (hoursUntilDue >= 20 && hoursUntilDue <= 28) {
-    const lastSent = reminderSentDates[reminderSentDates.length - 1];
-    if (!lastSent || msNow - lastSent.getTime() > 20 * msPerHour) {
+  // 1-day interval: between 8hrs and 48hrs from now
+  if (hoursUntilDue >= 8 && hoursUntilDue <= 48) {
+    if (!wasRecentlySent(reminderSentDates, oneDayCooldownMs)) {
       intervals.push("1-day");
     }
   }
 
-  // day-of interval: between 8hrs and 1hr from now
-  if (hoursUntilDue >= 1 && hoursUntilDue <= 8) {
-    const lastSent = reminderSentDates[reminderSentDates.length - 1];
-    if (!lastSent || msNow - lastSent.getTime() > 8 * msPerHour) {
+  // day-of interval: between 0.5hrs and 8hrs from now
+  if (hoursUntilDue >= 0.5 && hoursUntilDue <= 8) {
+    if (!wasRecentlySent(reminderSentDates, dayOfCooldownMs)) {
       intervals.push("day-of");
     }
   }
