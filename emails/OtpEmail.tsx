@@ -20,7 +20,27 @@ export default function OtpEmail({ otp }: OtpEmailProps) {
 
   return (
     <Html lang="en">
-      <Head />
+      <Head>
+        <style>{`
+          @media only screen and (max-width: 600px) {
+            .otp-digit {
+              width: 32px !important;
+              height: 44px !important;
+              line-height: 44px !important;
+              font-size: 20px !important;
+              margin: 0 2px !important;
+            }
+            .otp-section {
+              white-space: nowrap !important;
+              font-size: 0 !important;
+            }
+            .otp-section .otp-digit {
+              display: inline-block !important;
+              font-size: 20px !important;
+            }
+          }
+        `}</style>
+      </Head>
       <Preview>Your StayDue verification code is {otp}</Preview>
       <Body
         style={{
@@ -36,9 +56,9 @@ export default function OtpEmail({ otp }: OtpEmailProps) {
             <Img
               src="https://www.staydue.app/staydue_logo.svg"
               alt="StayDue"
-              width={140}
-              height={47}
-              style={{ display: "block", margin: "0 auto 4px" }}
+              width={200}
+              height={67}
+              style={{ display: "block", margin: "0 auto 4px", maxWidth: "100%", height: "auto" }}
             />
           </Section>
 
@@ -78,10 +98,11 @@ export default function OtpEmail({ otp }: OtpEmailProps) {
             </Text>
 
             {/* OTP Boxes */}
-            <Section style={{ textAlign: "center", marginBottom: "28px" }}>
+            <Section className="otp-section" style={{ textAlign: "center", marginBottom: "28px" }}>
               {otpDigits.map((digit, index) => (
                 <Text
                   key={index}
+                  className="otp-digit"
                   style={{
                     display: "inline-block",
                     width: "52px",

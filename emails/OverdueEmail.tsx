@@ -25,7 +25,16 @@ export default function OverdueEmail({ payload }: OverdueEmailProps) {
 
   return (
     <Html lang="en">
-      <Head />
+      <Head>
+        <style>{`
+          @media only screen and (max-width: 600px) {
+            .email-logo {
+              width: 160px !important;
+              height: 54px !important;
+            }
+          }
+        `}</style>
+      </Head>
       <Preview>Missed deadline — {title}</Preview>
       <Body
         style={{
@@ -41,9 +50,10 @@ export default function OverdueEmail({ payload }: OverdueEmailProps) {
             <Img
               src="https://www.staydue.app/staydue_logo.svg"
               alt="StayDue"
-              width={140}
-              height={47}
-              style={{ display: "block", margin: "0 auto 4px" }}
+              width={200}
+              height={67}
+              className="email-logo"
+              style={{ display: "block", margin: "0 auto 4px", maxWidth: "100%", height: "auto" }}
             />
           </Section>
 
