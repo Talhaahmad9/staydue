@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SettingsSection from "./SettingsLayout";
+import PhoneNumberInput from "./PhoneNumberInput";
 import type { SettingsUserData } from "@/app/settings/page";
 
 interface NotificationSettingsProps {
@@ -13,11 +14,9 @@ export default function NotificationSettings({ user }: NotificationSettingsProps
   const [reminderIntervals, setReminderIntervals] = useState(
     user.notificationPreferences?.reminderIntervals ?? ["3-day", "1-day", "day-of"]
   );
-  const [phone, setPhone] = useState(user.phone ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
   async function handleEmailToggle(enabled: boolean): Promise<void> {
     setEmailEnabled(enabled);
     setSaving(true);
@@ -30,18 +29,13 @@ export default function NotificationSettings({ user }: NotificationSettingsProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ emailEnabled: enabled }),
       });
-
       const data = (await response.json()) as { error?: string; success?: boolean };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Could not update email settings");
-      }
-
+      if (!response.ok) throw new Error(data.error ?? "Could not update email settings");
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update email settings");
-      setEmailEnabled(!enabled); // Revert on error
+      setEmailEnabled(!enabled);
     } finally {
       setSaving(false);
     }
@@ -51,12 +45,7 @@ export default function NotificationSettings({ user }: NotificationSettingsProps
     const newIntervals = reminderIntervals.includes(interval)
       ? reminderIntervals.filter((i) => i !== interval)
       : [...reminderIntervals, interval];
-
-    // Must have at least one interval selected
-    if (newIntervals.length === 0) {
-      return;
-    }
-
+    if (newIntervals.length === 0) return;
     setReminderIntervals(newIntervals);
     setSaving(true);
     setError(null);
@@ -68,18 +57,12 @@ export default function NotificationSettings({ user }: NotificationSettingsProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reminderIntervals: newIntervals }),
       });
-
       const data = (await response.json()) as { error?: string; success?: boolean };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Could not update reminder intervals");
-      }
-
+      if (!response.ok) throw new Error(data.error ?? "Could not update reminder intervals");
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update reminder intervals");
-      // Revert on error
       const oldIntervals = user.notificationPreferences?.reminderIntervals ?? ["3-day", "1-day", "day-of"];
       setReminderIntervals(oldIntervals);
     } finally {
@@ -145,21 +128,7 @@ export default function NotificationSettings({ user }: NotificationSettingsProps
         )}
 
         {/* Phone Number */}
-        <div className="border-t border-line/50 pt-6 space-y-3">
-          <p className="text-xs font-medium uppercase tracking-widest text-text-muted">WhatsApp number</p>
-          <p className="text-xs text-text-muted">For WhatsApp reminders — coming soon</p>
-          <input
-            type="text"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+92XXXXXXXXXX"
-            disabled={true}
-            className="w-full bg-page-surface border border-line rounded-lg px-3 py-2 text-sm text-text-muted outline-none cursor-not-allowed"
-          />
-          <span className="inline-block bg-page-surface border border-line text-text-muted text-xs px-2 py-0.5 rounded-full mt-2">
-            WhatsApp reminders coming soon
-          </span>
-        </div>
+        <PhoneNumberInput initialPhone={user.phone ?? ""} onSave={() => {}} />
 
         {/* Messages */}
         {error && <p className="text-sm text-urgency-todayText">{error}</p>}
