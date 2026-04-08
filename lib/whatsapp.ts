@@ -1,23 +1,19 @@
 import { DeadlineNotificationPayload } from "@/types/notification";
 
-/**
- * Meta WhatsApp Business API Response Interface (v25.0)
- */
 interface WhatsAppResponse {
   messaging_product: string;
   contacts: Array<{ input: string; wa_id: string }>;
-  messages: Array<{ id: string }>;
+  messages: Array<{ id: string; message_status?: string }>;
   error?: {
     message: string;
     type: string;
     code: number;
+    error_subcode?: number;
+    error_data?: unknown;
     fbtrace_id: string;
   };
 }
 
-/**
- * Template Parameter Types
- */
 interface WhatsAppParameter {
   type: "text";
   text: string;
@@ -35,36 +31,23 @@ interface WhatsAppMessageBody {
   type: "template";
   template: {
     name: string;
-    language: {
-      code: string;
-    };
+    language: { code: string };
     components?: WhatsAppTemplateComponent[];
   };
 }
 
-/**
- * Privacy-safe phone masking for logs
- * Example: +923033047700 -> +92XXXXXX7700
- */
 function maskPhoneNumber(phone: string): string {
   if (phone.length < 8) return "****";
   const cleanPhone = phone.replace("+", "");
   return `+${cleanPhone.slice(0, 2)}XXXXXX${cleanPhone.slice(-4)}`;
 }
 
-/**
- * Sends a WhatsApp notification using the Meta Graph API v25.0
- * * @param payload - The deadline details (User, Title, Course, Date)
- * @param phoneNumber - The recipient's phone in +92 format
- * @param isTest - Whether to use the static 'staydue_test' template
- */
 export async function sendWhatsAppMessage(
   payload: DeadlineNotificationPayload,
   phoneNumber: string,
   isTest: boolean = false,
 ): Promise<{ success: boolean; error?: string; maskedPhone?: string }> {
   try {
-    // 1. Validate Environment
     const {
       WHATSAPP_PHONE_NUMBER_ID,
       WHATSAPP_ACCESS_TOKEN,
@@ -80,7 +63,6 @@ export async function sendWhatsAppMessage(
       return { success: false, error: "WhatsApp API not configured" };
     }
 
-    // 2. Validate Template Selection
     const templateName = isTest
       ? WHATSAPP_TEMPLATE_TEST
       : WHATSAPP_TEMPLATE_NAME;
@@ -92,8 +74,6 @@ export async function sendWhatsAppMessage(
       return { success: false, error: "Template name not found" };
     }
 
-    // 3. Construct Payload
-    // Meta expects 'to' as digits only (e.g., 923033047700)
     const messageBody: WhatsAppMessageBody = {
       messaging_product: "whatsapp",
       recipient_type: "individual",
@@ -101,14 +81,10 @@ export async function sendWhatsAppMessage(
       type: "template",
       template: {
         name: templateName,
-        language: {
-          code: "en",
-        },
+        language: { code: "en" },
       },
     };
 
-    // 4. Map Template Variables (Only for non-test reminders)
-    // Production Template Mapping: {{1}} Name, {{2}} Title, {{3}} Course, {{4}} Date
     if (!isTest) {
       messageBody.template.components = [
         {
@@ -123,7 +99,6 @@ export async function sendWhatsAppMessage(
       ];
     }
 
-    // 5. Execute API Call (v25.0)
     const response = await fetch(
       `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
       {
@@ -143,18 +118,21 @@ export async function sendWhatsAppMessage(
       console.error("[whatsapp/error]", {
         status: response.status,
         error: errorMsg,
+        errorCode: data.error?.code,
+        errorSubcode: data.error?.error_subcode,
+        fbtrace_id: data.error?.fbtrace_id,
         templateName,
         maskedPhone: maskPhoneNumber(phoneNumber),
       });
       return { success: false, error: errorMsg };
     }
 
-    // 6. Success Logging
     console.log("[whatsapp/sent]", {
       templateName,
       isTest,
       maskedPhone: maskPhoneNumber(phoneNumber),
       messageId: data.messages?.[0]?.id,
+      messageStatus: data.messages?.[0]?.message_status,
     });
 
     return { success: true, maskedPhone: maskPhoneNumber(phoneNumber) };

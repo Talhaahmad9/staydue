@@ -28,23 +28,32 @@ export async function GET(): Promise<NextResponse> {
     const payload = await buildTestNotificationPayload(
       user._id.toString(),
       user.name || "Student",
-      user.email
+      user.email,
     );
     if (!payload) {
-      return NextResponse.json({ error: "No upcoming deadlines found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "No upcoming deadlines found" },
+        { status: 404 },
+      );
     }
 
     const emailResult = await sendReminderEmail(payload);
     if (!emailResult.success) {
       return NextResponse.json(
         { error: emailResult.error || "Failed to send reminder" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     let whatsappPhone: string | undefined;
     if (user.phone) {
-      const whatsappResult = await sendWhatsAppMessage(payload, user.phone, true);
+      // Using isTest: false to use 'deadline_reminder' (Utility) template
+      // Marketing templates (staydue_test) are blocked in dev mode
+      const whatsappResult = await sendWhatsAppMessage(
+        payload,
+        user.phone,
+        false,
+      );
       if (whatsappResult.success) {
         whatsappPhone = whatsappResult.maskedPhone;
       }
@@ -57,7 +66,13 @@ export async function GET(): Promise<NextResponse> {
       deadline: payload.deadline.title,
     });
   } catch (error) {
-    console.error("[test-notify]", error instanceof Error ? error.message : String(error));
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error(
+      "[test-notify]",
+      error instanceof Error ? error.message : String(error),
+    );
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

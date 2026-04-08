@@ -3,45 +3,67 @@ import { sendReminderEmail } from "@/lib/resend";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { DeadlineNotificationPayload } from "@/types/notification";
 
-export async function sendReminderWithoutifications(
-  payload: DeadlineNotificationPayload
+export async function sendReminderNotifications(
+  payload: DeadlineNotificationPayload,
 ): Promise<{ success: boolean; whatsappSent: boolean }> {
   let whatsappSent = false;
 
-  // Send email
   const emailResult = await sendReminderEmail(payload);
   if (!emailResult.success) {
+    console.error("[notify/email-failed]", {
+      deadlineId: payload.deadlineId,
+      userId: payload.userId,
+      error: emailResult.error,
+    });
     return { success: false, whatsappSent: false };
   }
 
-  // Track reminder sent
   try {
     await DeadlineModel.updateOne(
       { _id: payload.deadlineId },
-      { $push: { reminderSentDates: new Date() } }
+      { $push: { reminderSentDates: new Date() } },
     );
   } catch (updateError) {
     console.error(
       "[notify/update-reminder]",
-      updateError instanceof Error ? updateError.message : String(updateError)
+      updateError instanceof Error ? updateError.message : String(updateError),
     );
   }
 
-  // Send WhatsApp independently
   try {
     const user = await UserModel.findById(payload.userId).lean();
     if (user?.phone) {
-      const whatsappResult = await sendWhatsAppMessage(payload, user.phone, false);
+      const whatsappResult = await sendWhatsAppMessage(
+        payload,
+        user.phone,
+        false,
+      );
       whatsappSent = whatsappResult.success;
       if (!whatsappSent) {
-        console.warn("[notify/whatsapp]", {
+        console.warn("[notify/whatsapp-failed]", {
           deadlineId: payload.deadlineId,
           error: whatsappResult.error,
+          maskedPhone: whatsappResult.maskedPhone,
+        });
+      } else {
+        console.log("[notify/whatsapp-success]", {
+          deadlineId: payload.deadlineId,
+          maskedPhone: whatsappResult.maskedPhone,
         });
       }
+    } else {
+      console.log("[notify/whatsapp-skipped]", {
+        reason: "No phone number on user",
+        userId: payload.userId,
+      });
     }
   } catch (whatsappError) {
-    console.error("[notify/whatsapp-send]", whatsappError instanceof Error ? whatsappError.message : String(whatsappError));
+    console.error(
+      "[notify/whatsapp-send]",
+      whatsappError instanceof Error
+        ? whatsappError.message
+        : String(whatsappError),
+    );
   }
 
   return { success: true, whatsappSent };
@@ -50,7 +72,7 @@ export async function sendReminderWithoutifications(
 export async function buildTestNotificationPayload(
   userId: string,
   userName: string,
-  userEmail: string
+  userEmail: string,
 ): Promise<DeadlineNotificationPayload | null> {
   const deadline = await DeadlineModel.findOne({
     userId,
@@ -99,7 +121,11 @@ export async function buildTestNotificationPayload(
           month: "short",
           day: "numeric",
         }),
-        urgency: getDeadlineUrgency(d.dueDate) as "today" | "tomorrow" | "3-day" | "upcoming",
+        urgency: getDeadlineUrgency(d.dueDate) as
+          | "today"
+          | "tomorrow"
+          | "3-day"
+          | "upcoming",
       })),
     },
   };

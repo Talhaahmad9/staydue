@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDeadlinesNeedingReminder, getDeadlinesNeedingOverdueNotice } from "@/lib/notifications";
+import {
+  getDeadlinesNeedingReminder,
+  getDeadlinesNeedingOverdueNotice,
+} from "@/lib/notifications";
 import { sendOverdueEmail } from "@/lib/resend";
 import { DeadlineModel, connectToDatabase } from "@/lib/mongodb";
-import { sendReminderWithoutifications } from "@/lib/notifications-send";
+import { sendReminderNotifications } from "@/lib/notifications-send";
 
 export async function GET(request: Request): Promise<NextResponse> {
   try {
@@ -21,11 +24,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     let whatsappSent = 0;
     let errors = 0;
 
-    // Send reminder emails
+    // Send reminder emails + whatsapp
     try {
       const remindersPayloads = await getDeadlinesNeedingReminder();
       for (const payload of remindersPayloads) {
-        const result = await sendReminderWithoutifications(payload);
+        const result = await sendReminderNotifications(payload);
         if (result.success) {
           remindersSent++;
           if (result.whatsappSent) whatsappSent++;
@@ -34,7 +37,12 @@ export async function GET(request: Request): Promise<NextResponse> {
         }
       }
     } catch (reminderError) {
-      console.error("[cron/notify/reminders]", reminderError instanceof Error ? reminderError.message : String(reminderError));
+      console.error(
+        "[cron/notify/reminders]",
+        reminderError instanceof Error
+          ? reminderError.message
+          : String(reminderError),
+      );
     }
 
     // Send overdue emails
@@ -46,18 +54,31 @@ export async function GET(request: Request): Promise<NextResponse> {
           try {
             await DeadlineModel.updateOne(
               { _id: payload.deadlineId },
-              { $set: { overdueNotifiedAt: new Date() }, $inc: { overdueNotificationCount: 1 } }
+              {
+                $set: { overdueNotifiedAt: new Date() },
+                $inc: { overdueNotificationCount: 1 },
+              },
             );
             overduesSent++;
           } catch (updateError) {
-            console.error("[cron/notify/update-overdue]", updateError instanceof Error ? updateError.message : String(updateError));
+            console.error(
+              "[cron/notify/update-overdue]",
+              updateError instanceof Error
+                ? updateError.message
+                : String(updateError),
+            );
           }
         } else {
           errors++;
         }
       }
     } catch (overdueError) {
-      console.error("[cron/notify/overdue]", overdueError instanceof Error ? overdueError.message : String(overdueError));
+      console.error(
+        "[cron/notify/overdue]",
+        overdueError instanceof Error
+          ? overdueError.message
+          : String(overdueError),
+      );
     }
 
     console.log("[cron/notify/summary]", {
@@ -76,10 +97,13 @@ export async function GET(request: Request): Promise<NextResponse> {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[cron/notify]", error instanceof Error ? error.message : String(error));
+    console.error(
+      "[cron/notify]",
+      error instanceof Error ? error.message : String(error),
+    );
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
