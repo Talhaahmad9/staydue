@@ -46,7 +46,7 @@ function getClientIp(request: NextRequest): string {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Exclude cron endpoints (protected by CRON_SECRET header)
+  // /api/cron/* excluded — protected by CRON_SECRET, not IP rate limiting
   if (pathname.startsWith("/api/cron")) {
     return NextResponse.next();
   }

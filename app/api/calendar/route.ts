@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 
 import { auth } from "@/lib/auth";
-import { getCatalogMapByYear, normalizeCourseCode } from "@/lib/catalog";
-import { parseCalendarEvents } from "@/lib/ical";
-import { DeadlineModel, UserModel, connectToDatabase } from "@/lib/mongodb";
+import { syncCalendarForUser } from "@/lib/calendar";
+import { UserModel, connectToDatabase } from "@/lib/mongodb";
 import { connectCalendarSchema } from "@/utils/validate";
 
 function jsonError(status: number, error: string, code: string): NextResponse {
@@ -44,51 +43,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return jsonError(400, validationMessage, "VALIDATION_ERROR");
     }
 
-    try {
-      const catalogMap = await getCatalogMapByYear(parsedBody.data.admissionYear);
-      if (catalogMap.size === 0) {
-        return jsonError(
-          400,
-          "Catalog data is unavailable for the selected admission year.",
-          "INVALID_ADMISSION_YEAR"
-        );
-      }
-    } catch (catalogError) {
-      console.error("[api/calendar/catalog]", catalogError instanceof Error ? catalogError.message : String(catalogError));
-      return jsonError(500, "Could not load catalog data. Please try again.", "CATALOG_ERROR");
-    }
 
-    let response: Response;
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 12000);
-
-      response = await fetch(parsedBody.data.url, {
-        method: "GET",
-        signal: controller.signal,
-        cache: "no-store",
-      }).finally(() => clearTimeout(timeout));
-
-      if (!response.ok) {
-        return jsonError(502, "Could not fetch calendar from Moodle.", "CALENDAR_FETCH_FAILED");
-      }
-    } catch (fetchError) {
-      console.error("[api/calendar/fetch]", fetchError instanceof Error ? fetchError.message : String(fetchError));
-      return jsonError(502, "Could not fetch calendar from Moodle.", "CALENDAR_FETCH_FAILED");
-    }
-
-    let rawICS: string;
-    try {
-      rawICS = await response.text();
-    } catch (parseError) {
-      console.error("[api/calendar/text]", parseError instanceof Error ? parseError.message : String(parseError));
-      return jsonError(502, "Could not parse calendar response.", "CALENDAR_PARSE_FAILED");
-    }
-
-    const deadlines = parseCalendarEvents(rawICS);
-    const uniqueDeadlines = Array.from(
-      new Map(deadlines.map((deadline) => [deadline.sourceEventId, deadline])).values()
-    );
     
     let userObjectId: mongoose.Types.ObjectId;
     try {
@@ -105,6 +60,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return jsonError(500, "Database connection failed. Please try again.", "DB_CONNECT_ERROR");
     }
 
+    // Update user with calendar URL, phone, and onboarding completion
     const userUpdates: {
       moodleCalendarUrl: string;
       hasCompletedOnboarding: boolean;
@@ -132,45 +88,34 @@ export async function POST(request: Request): Promise<NextResponse> {
       return jsonError(500, "Could not save calendar URL. Please try again.", "USER_UPDATE_ERROR");
     }
 
-    if (uniqueDeadlines.length > 0) {
-      const catalogMap = await getCatalogMapByYear(parsedBody.data.admissionYear);
-
-      try {
-        await DeadlineModel.bulkWrite(
-          uniqueDeadlines.map((deadline) => ({
-            updateOne: {
-              filter: { userId: userObjectId, sourceEventId: deadline.sourceEventId },
-              update: {
-                $set: {
-                  title: deadline.title,
-                  course: normalizeCourseCode(deadline.courseCode),
-                  courseCode: normalizeCourseCode(deadline.courseCode),
-                  courseTitle:
-                    catalogMap.get(normalizeCourseCode(deadline.courseCode)) ?? "Uncategorized",
-                  catalogYear: parsedBody.data.admissionYear,
-                  description: deadline.description,
-                  dueDate: deadline.dueDate,
-                },
-                $setOnInsert: {
-                  userId: userObjectId,
-                  status: "upcoming",
-                  isCompleted: false,
-                  createdAt: new Date(),
-                },
-              },
-              upsert: true,
-            },
-          }))
-        );
-      } catch (bulkWriteError) {
-        console.error("[api/calendar/bulk-write]", bulkWriteError instanceof Error ? bulkWriteError.message : String(bulkWriteError));
+    // Sync calendar deadlines using shared lib
+    let syncResult;
+    try {
+      syncResult = await syncCalendarForUser({
+        userId: session.user.id,
+        moodleCalendarUrl: parsedBody.data.url,
+        admissionYear: parsedBody.data.admissionYear,
+      });
+    } catch (syncError) {
+      const errorMessage = syncError instanceof Error ? syncError.message : String(syncError);
+      if (errorMessage.includes("[calendar/fetch]")) {
+        return jsonError(502, "Could not fetch calendar from Moodle.", "CALENDAR_FETCH_FAILED");
+      }
+      if (errorMessage.includes("[calendar/parse]")) {
+        return jsonError(502, "Could not parse calendar response.", "CALENDAR_PARSE_FAILED");
+      }
+      if (errorMessage.includes("[calendar/catalog]")) {
+        return jsonError(500, "Could not load catalog data. Please try again.", "CATALOG_ERROR");
+      }
+      if (errorMessage.includes("[calendar/bulkwrite]")) {
         return jsonError(500, "Could not save deadlines. Please try again.", "BULK_WRITE_ERROR");
       }
+      console.error("[api/calendar/sync]", errorMessage);
+      return jsonError(500, "Could not sync your calendar. Please try again.", "INTERNAL_ERROR");
     }
 
     return NextResponse.json({
-      syncedCount: uniqueDeadlines.length,
-      preview: uniqueDeadlines.slice(0, 3),
+      syncedCount: syncResult.syncedCount,
     });
   } catch (error) {
     console.error("[api/calendar]", error instanceof Error ? error.message : String(error));
