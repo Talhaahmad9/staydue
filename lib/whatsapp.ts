@@ -1,19 +1,38 @@
 import { DeadlineNotificationPayload } from "@/types/notification";
 
-interface WhatsAppTemplateComponent {
-  type: string;
-  parameters?: {
-    body?: {
-      parameters: Array<{ type: string; text: string }>;
-    };
+/**
+ * Meta WhatsApp Business API Response Interface (v25.0)
+ */
+interface WhatsAppResponse {
+  messaging_product: string;
+  contacts: Array<{ input: string; wa_id: string }>;
+  messages: Array<{ id: string }>;
+  error?: {
+    message: string;
+    type: string;
+    code: number;
+    fbtrace_id: string;
   };
 }
 
+/**
+ * Template Parameter Types
+ */
+interface WhatsAppParameter {
+  type: "text";
+  text: string;
+}
+
+interface WhatsAppTemplateComponent {
+  type: "body" | "header" | "button";
+  parameters: WhatsAppParameter[];
+}
+
 interface WhatsAppMessageBody {
-  messaging_product: string;
-  recipient_type: string;
+  messaging_product: "whatsapp";
+  recipient_type: "individual";
   to: string;
-  type: string;
+  type: "template";
   template: {
     name: string;
     language: {
@@ -23,35 +42,58 @@ interface WhatsAppMessageBody {
   };
 }
 
+/**
+ * Privacy-safe phone masking for logs
+ * Example: +923033047700 -> +92XXXXXX7700
+ */
 function maskPhoneNumber(phone: string): string {
-  // Show only last 4 digits: +92XXXXXX7890
-  if (phone.length < 4) return "****";
-  return `+92${"X".repeat(Math.max(0, phone.length - 6))}${phone.slice(-4)}`;
+  if (phone.length < 8) return "****";
+  const cleanPhone = phone.replace("+", "");
+  return `+${cleanPhone.slice(0, 2)}XXXXXX${cleanPhone.slice(-4)}`;
 }
 
+/**
+ * Sends a WhatsApp notification using the Meta Graph API v25.0
+ * * @param payload - The deadline details (User, Title, Course, Date)
+ * @param phoneNumber - The recipient's phone in +92 format
+ * @param isTest - Whether to use the static 'staydue_test' template
+ */
 export async function sendWhatsAppMessage(
   payload: DeadlineNotificationPayload,
   phoneNumber: string,
-  isTest: boolean = false
+  isTest: boolean = false,
 ): Promise<{ success: boolean; error?: string; maskedPhone?: string }> {
   try {
-    // Validate environment variables
-    if (!process.env.WHATSAPP_PHONE_NUMBER_ID || !process.env.WHATSAPP_ACCESS_TOKEN) {
-      console.error("[whatsapp]", "Missing WhatsApp credentials in environment");
-      return { success: false, error: "WhatsApp not configured" };
+    // 1. Validate Environment
+    const {
+      WHATSAPP_PHONE_NUMBER_ID,
+      WHATSAPP_ACCESS_TOKEN,
+      WHATSAPP_TEMPLATE_NAME,
+      WHATSAPP_TEMPLATE_TEST,
+    } = process.env;
+
+    if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
+      console.error(
+        "[whatsapp/error]",
+        "Missing WhatsApp credentials in environment",
+      );
+      return { success: false, error: "WhatsApp API not configured" };
     }
 
-    // Validate phone number
-    if (!phoneNumber || !phoneNumber.match(/^\+92[0-9]{10}$/)) {
-      return { success: false, error: "Invalid phone number format" };
-    }
-
-    const templateName = isTest ? process.env.WHATSAPP_TEMPLATE_TEST : process.env.WHATSAPP_TEMPLATE_NAME;
+    // 2. Validate Template Selection
+    const templateName = isTest
+      ? WHATSAPP_TEMPLATE_TEST
+      : WHATSAPP_TEMPLATE_NAME;
     if (!templateName) {
-      console.error("[whatsapp]", `Missing template: ${isTest ? "WHATSAPP_TEMPLATE_TEST" : "WHATSAPP_TEMPLATE_NAME"}`);
-      return { success: false, error: "WhatsApp template not configured" };
+      const envKey = isTest
+        ? "WHATSAPP_TEMPLATE_TEST"
+        : "WHATSAPP_TEMPLATE_NAME";
+      console.error("[whatsapp/error]", `Missing ${envKey} in environment`);
+      return { success: false, error: "Template name not found" };
     }
 
+    // 3. Construct Payload
+    // Meta expects 'to' as digits only (e.g., 923033047700)
     const messageBody: WhatsAppMessageBody = {
       messaging_product: "whatsapp",
       recipient_type: "individual",
@@ -65,61 +107,61 @@ export async function sendWhatsAppMessage(
       },
     };
 
-    // Add template variables if not test
+    // 4. Map Template Variables (Only for non-test reminders)
+    // Production Template Mapping: {{1}} Name, {{2}} Title, {{3}} Course, {{4}} Date
     if (!isTest) {
-      const formattedDueDate = payload.deadline.dueDate;
       messageBody.template.components = [
         {
           type: "body",
-          parameters: {
-            body: {
-              parameters: [
-                { type: "text", text: payload.userName },
-                { type: "text", text: payload.deadline.title },
-                { type: "text", text: payload.deadline.courseCode },
-                { type: "text", text: formattedDueDate },
-              ],
-            },
-          },
+          parameters: [
+            { type: "text", text: payload.userName },
+            { type: "text", text: payload.deadline.title },
+            { type: "text", text: payload.deadline.courseCode },
+            { type: "text", text: payload.deadline.dueDate },
+          ],
         },
       ];
     }
 
+    // 5. Execute API Call (v25.0)
     const response = await fetch(
-      `https://graph.instagram.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(messageBody),
-      }
+      },
     );
 
-    const data = (await response.json()) as Record<string, unknown>;
+    const data = (await response.json()) as WhatsAppResponse;
 
     if (!response.ok) {
-      const errorMsg = (data.error as Record<string, unknown> | undefined)?.message || "Unknown error";
+      const errorMsg = data.error?.message || "Unknown Meta API error";
       console.error("[whatsapp/error]", {
         status: response.status,
         error: errorMsg,
         templateName,
         maskedPhone: maskPhoneNumber(phoneNumber),
       });
-      return { success: false, error: String(errorMsg) };
+      return { success: false, error: errorMsg };
     }
 
+    // 6. Success Logging
     console.log("[whatsapp/sent]", {
       templateName,
       isTest,
       maskedPhone: maskPhoneNumber(phoneNumber),
-      messageId: (data.messages as Array<Record<string, unknown>> | undefined)?.[0]?.id,
+      messageId: data.messages?.[0]?.id,
     });
 
     return { success: true, maskedPhone: maskPhoneNumber(phoneNumber) };
   } catch (error) {
-    console.error("[whatsapp]", error instanceof Error ? error.message : String(error));
-    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    const errorMessage =
+      error instanceof Error ? error.message : "Network/Unknown error";
+    console.error("[whatsapp/exception]", errorMessage);
+    return { success: false, error: errorMessage };
   }
 }
