@@ -92,7 +92,7 @@ export async function sendWhatsAppMessage(
           parameters: [
             { type: "text", text: payload.userName },
             { type: "text", text: payload.deadline.title },
-            { type: "text", text: payload.deadline.courseCode },
+            { type: "text", text: `${payload.deadline.courseCode} (${payload.deadline.courseTitle})` },
             { type: "text", text: payload.deadline.dueDate },
           ],
         },
