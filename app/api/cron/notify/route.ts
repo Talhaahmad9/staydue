@@ -19,6 +19,30 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     await connectToDatabase();
 
+    // Update all upcoming deadlines that have passed to overdue status
+    try {
+      const now = new Date();
+      const result = await DeadlineModel.updateMany(
+        {
+          isCompleted: false,
+          status: "upcoming",
+          dueDate: { $lt: now },
+        },
+        { status: "overdue" }
+      );
+      if (result.modifiedCount > 0) {
+        console.log("[cron/notify/status-update]", {
+          updated: result.modifiedCount,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (statusError) {
+      console.error(
+        "[cron/notify/status-update-error]",
+        statusError instanceof Error ? statusError.message : String(statusError),
+      );
+    }
+
     let remindersSent = 0;
     let overduesSent = 0;
     let whatsappSent = 0;
