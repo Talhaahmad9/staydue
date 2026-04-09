@@ -1,6 +1,6 @@
 import { connectToDatabase, DeadlineModel, UserModel } from "@/lib/mongodb";
 import { DeadlineNotificationPayload, ReminderInterval } from "@/types/notification";
-import { getDeadlineUrgency } from "@/utils/date";
+import { getDeadlineUrgency, getDaysDifferenceInTimezone } from "@/utils/date";
 
 // This function is the single source of truth for notification scheduling.
 // Email delivery calls this directly. WhatsApp delivery will call the same
@@ -120,7 +120,9 @@ export async function getDeadlinesNeedingOverdueNotice(): Promise<DeadlineNotifi
 
       for (const deadline of overdueDeadlines) {
         let shouldSend = false;
-        const daysSinceDue = Math.floor((now.getTime() - deadline.dueDate.getTime()) / (1000 * 60 * 60 * 24));
+        // Calculate days using user's timezone to match dashboard logic
+        const userTimezone = user.timezone || "Asia/Karachi";
+        const daysSinceDue = getDaysDifferenceInTimezone(now, deadline.dueDate, userTimezone);
 
         const count = deadline.overdueNotificationCount || 0;
 
@@ -130,13 +132,13 @@ export async function getDeadlinesNeedingOverdueNotice(): Promise<DeadlineNotifi
         } else if (count === 1) {
           // Second notification: send if 3+ days since the last notification
           const daysSinceNotified = deadline.overdueNotifiedAt
-            ? Math.floor((now.getTime() - deadline.overdueNotifiedAt.getTime()) / (1000 * 60 * 60 * 24))
+            ? getDaysDifferenceInTimezone(now, deadline.overdueNotifiedAt, userTimezone)
             : 0;
           shouldSend = daysSinceNotified >= 3;
         } else if (count === 2) {
           // Third notification: send if 7+ days since the last notification
           const daysSinceNotified = deadline.overdueNotifiedAt
-            ? Math.floor((now.getTime() - deadline.overdueNotifiedAt.getTime()) / (1000 * 60 * 60 * 24))
+            ? getDaysDifferenceInTimezone(now, deadline.overdueNotifiedAt, userTimezone)
             : 0;
           shouldSend = daysSinceNotified >= 7;
         }

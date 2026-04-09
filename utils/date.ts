@@ -38,3 +38,33 @@ export function getDeadlineUrgency(dueDate: Date, now = new Date()): DeadlineUrg
 export function formatDashboardDueDate(dueDate: Date): string {
   return dueDateFormatter.format(dueDate);
 }
+
+/**
+ * Calculate days difference between two dates in a specific timezone.
+ * Properly handles timezone offsets (e.g., Asia/Karachi).
+ * @example getDaysDifferenceInTimezone(pastDate, nowDate, "Asia/Karachi") returns number of calendar days
+ */
+export function getDaysDifferenceInTimezone(laterDate: Date, earlierDate: Date, timezone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: timezone,
+  });
+
+  const formatDate = (date: Date): string => {
+    const parts = formatter.formatToParts(date);
+    const year = parts.find((p) => p.type === 'year')?.value;
+    const month = parts.find((p) => p.type === 'month')?.value;
+    const day = parts.find((p) => p.type === 'day')?.value;
+    return `${year}-${month}-${day}`;
+  };
+
+  const dateStr1 = formatDate(laterDate);
+  const dateStr2 = formatDate(earlierDate);
+
+  const d1 = new Date(dateStr1);
+  const d2 = new Date(dateStr2);
+
+  return Math.floor((d1.getTime() - d2.getTime()) / DAY_IN_MS);
+}
