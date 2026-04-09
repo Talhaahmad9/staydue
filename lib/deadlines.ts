@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { DeadlineModel, connectToDatabase } from "@/lib/mongodb";
 
 interface DashboardDeadline {
@@ -17,11 +18,19 @@ export async function getDeadlinesForUser(userId: string): Promise<{
   await connectToDatabase();
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  
+  // Convert userId string to ObjectId for consistent database queries
+  let userObjectId: mongoose.Types.ObjectId;
+  try {
+    userObjectId = new mongoose.Types.ObjectId(userId);
+  } catch (error) {
+    throw new Error(`Invalid user ID format: ${userId}`);
+  }
 
   // Mark newly overdue deadlines (past due date but not yet marked as overdue)
   await DeadlineModel.updateMany(
     {
-      userId,
+      userId: userObjectId,
       isCompleted: false,
       status: "upcoming",
       dueDate: { $lt: now },
@@ -31,7 +40,7 @@ export async function getDeadlinesForUser(userId: string): Promise<{
 
   // Fetch active deadlines (upcoming, not done)
   const activeDocuments = await DeadlineModel.find({
-    userId,
+    userId: userObjectId,
     isCompleted: false,
     status: "upcoming",
     dueDate: { $gte: now },
@@ -41,7 +50,7 @@ export async function getDeadlinesForUser(userId: string): Promise<{
 
   // Fetch overdue deadlines (overdue, within 30 days, not done)
   const overdueDocuments = await DeadlineModel.find({
-    userId,
+    userId: userObjectId,
     isCompleted: false,
     status: "overdue",
     dueDate: { $gte: thirtyDaysAgo },
@@ -51,7 +60,7 @@ export async function getDeadlinesForUser(userId: string): Promise<{
 
   // Fetch done deadlines (done, within 30 days, sorted descending by doneAt)
   const doneDocuments = await DeadlineModel.find({
-    userId,
+    userId: userObjectId,
     isCompleted: true,
     status: "done",
     dueDate: { $gte: thirtyDaysAgo },
