@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import ButtonLoader from "@/components/shared/loaders/ButtonLoader";
+import SubscriptionBadge from "@/components/dashboard/SubscriptionBadge";
 
 interface DashboardSidebarProps {
   userInitials: string;
@@ -64,6 +65,10 @@ export default function DashboardSidebar({
             </Link>
           ))}
         </nav>
+
+        <div className="mt-auto pb-4">
+          <SubscriptionBadge />
+        </div>
 
         <div className="pt-6 border-t border-line/50 space-y-4">
           <div className="flex items-center gap-3">

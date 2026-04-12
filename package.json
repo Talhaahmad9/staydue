@@ -12,6 +12,8 @@
     "catalog:upload": "node --env-file=.env.local scripts/upload-catalog-data.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1029.0",
+    "@aws-sdk/s3-request-presigner": "^3.1029.0",
     "@base-ui/react": "^1.3.0",
     "@react-email/components": "^1.0.11",
     "@react-email/render": "^2.0.5",

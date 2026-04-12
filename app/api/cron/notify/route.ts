@@ -8,6 +8,23 @@ import { DeadlineModel, UserModel, connectToDatabase } from "@/lib/mongodb";
 import { sendReminderNotifications } from "@/lib/notifications-send";
 import { sendWhatsAppOverdueMessage } from "@/lib/whatsapp";
 
+function isWhatsAppEligible(user: {
+  isPro: boolean;
+  proExpiresAt: Date | null;
+  trialStartedAt: Date | null;
+}): boolean {
+  const now = new Date();
+  if (user.isPro && user.proExpiresAt && user.proExpiresAt > now) {
+    return true;
+  }
+  if (user.trialStartedAt) {
+    const msElapsed = now.getTime() - user.trialStartedAt.getTime();
+    const daysElapsed = msElapsed / (1000 * 60 * 60 * 24);
+    if (daysElapsed <= 7) return true;
+  }
+  return false;
+}
+
 export async function GET(request: Request): Promise<NextResponse> {
   try {
     // Verify authorization
@@ -96,11 +113,27 @@ export async function GET(request: Request): Promise<NextResponse> {
           }
 
           try {
-            const user = await UserModel.findById(payload.userId).lean();
-            if (user?.phone) {
+            const user = await UserModel.findById(payload.userId)
+              .select("phone isPro proExpiresAt trialStartedAt")
+              .lean();
+            if (!user?.phone) {
+              console.log("[cron/notify/whatsapp-overdue-skipped]", {
+                reason: "No phone number on user",
+                userId: payload.userId,
+              });
+            } else if (!isWhatsAppEligible(user)) {
+              console.log("[cron/notify/whatsapp-overdue-skipped]", {
+                reason: "User not pro or trial expired",
+                userId: payload.userId,
+              });
+            } else {
               const whatsappResult = await sendWhatsAppOverdueMessage(payload, user.phone);
               if (whatsappResult.success) {
                 whatsappOverdueSent++;
+                await UserModel.updateOne(
+                  { _id: payload.userId },
+                  { $inc: { whatsappTrialUsed: 1 } }
+                );
                 console.log("[cron/notify/whatsapp-overdue-success]", {
                   deadlineId: payload.deadlineId,
                   maskedPhone: whatsappResult.maskedPhone,
@@ -112,18 +145,11 @@ export async function GET(request: Request): Promise<NextResponse> {
                   maskedPhone: whatsappResult.maskedPhone,
                 });
               }
-            } else {
-              console.log("[cron/notify/whatsapp-overdue-skipped]", {
-                reason: "No phone number on user",
-                userId: payload.userId,
-              });
             }
           } catch (whatsappError) {
             console.error(
               "[cron/notify/whatsapp-overdue-send]",
-              whatsappError instanceof Error
-                ? whatsappError.message
-                : String(whatsappError),
+              whatsappError instanceof Error ? whatsappError.message : String(whatsappError),
             );
           }
         } else {
