@@ -4,8 +4,9 @@ import {
   getDeadlinesNeedingOverdueNotice,
 } from "@/lib/notifications";
 import { sendOverdueEmail } from "@/lib/resend";
-import { DeadlineModel, connectToDatabase } from "@/lib/mongodb";
+import { DeadlineModel, UserModel, connectToDatabase } from "@/lib/mongodb";
 import { sendReminderNotifications } from "@/lib/notifications-send";
+import { sendWhatsAppOverdueMessage } from "@/lib/whatsapp";
 
 export async function GET(request: Request): Promise<NextResponse> {
   try {
@@ -46,6 +47,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     let remindersSent = 0;
     let overduesSent = 0;
     let whatsappSent = 0;
+    let whatsappOverdueSent = 0;
     let errors = 0;
 
     // Send reminder emails + whatsapp
@@ -92,6 +94,38 @@ export async function GET(request: Request): Promise<NextResponse> {
                 : String(updateError),
             );
           }
+
+          try {
+            const user = await UserModel.findById(payload.userId).lean();
+            if (user?.phone) {
+              const whatsappResult = await sendWhatsAppOverdueMessage(payload, user.phone);
+              if (whatsappResult.success) {
+                whatsappOverdueSent++;
+                console.log("[cron/notify/whatsapp-overdue-success]", {
+                  deadlineId: payload.deadlineId,
+                  maskedPhone: whatsappResult.maskedPhone,
+                });
+              } else {
+                console.warn("[cron/notify/whatsapp-overdue-failed]", {
+                  deadlineId: payload.deadlineId,
+                  error: whatsappResult.error,
+                  maskedPhone: whatsappResult.maskedPhone,
+                });
+              }
+            } else {
+              console.log("[cron/notify/whatsapp-overdue-skipped]", {
+                reason: "No phone number on user",
+                userId: payload.userId,
+              });
+            }
+          } catch (whatsappError) {
+            console.error(
+              "[cron/notify/whatsapp-overdue-send]",
+              whatsappError instanceof Error
+                ? whatsappError.message
+                : String(whatsappError),
+            );
+          }
         } else {
           errors++;
         }
@@ -109,6 +143,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       remindersSent,
       whatsappSent,
       overduesSent,
+      whatsappOverdueSent,
       errors,
       timestamp: new Date().toISOString(),
     });
@@ -117,6 +152,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       sent: remindersSent,
       whatsappSent,
       overdueSent: overduesSent,
+      whatsappOverdueSent,
       errors,
       timestamp: new Date().toISOString(),
     });

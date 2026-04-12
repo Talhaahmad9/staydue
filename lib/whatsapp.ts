@@ -92,7 +92,10 @@ export async function sendWhatsAppMessage(
           parameters: [
             { type: "text", text: payload.userName },
             { type: "text", text: payload.deadline.title },
-            { type: "text", text: `${payload.deadline.courseCode} (${payload.deadline.courseTitle})` },
+            {
+              type: "text",
+              text: `${payload.deadline.courseCode} (${payload.deadline.courseTitle})`,
+            },
             { type: "text", text: payload.deadline.dueDate },
           ],
         },
@@ -140,6 +143,99 @@ export async function sendWhatsAppMessage(
     const errorMessage =
       error instanceof Error ? error.message : "Network/Unknown error";
     console.error("[whatsapp/exception]", errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
+export async function sendWhatsAppOverdueMessage(
+  payload: DeadlineNotificationPayload,
+  phoneNumber: string,
+): Promise<{ success: boolean; error?: string; maskedPhone?: string }> {
+  try {
+    const {
+      WHATSAPP_PHONE_NUMBER_ID,
+      WHATSAPP_ACCESS_TOKEN,
+      WHATSAPP_TEMPLATE_OVERDUE,
+    } = process.env;
+
+    if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
+      console.error(
+        "[whatsapp/error]",
+        "Missing WhatsApp credentials in environment",
+      );
+      return { success: false, error: "WhatsApp API not configured" };
+    }
+
+    if (!WHATSAPP_TEMPLATE_OVERDUE) {
+      console.error(
+        "[whatsapp/error]",
+        "Missing WHATSAPP_TEMPLATE_OVERDUE in environment",
+      );
+      return { success: false, error: "Template name not found" };
+    }
+
+    const messageBody: WhatsAppMessageBody = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: phoneNumber.replace("+", ""),
+      type: "template",
+      template: {
+        name: WHATSAPP_TEMPLATE_OVERDUE,
+        language: { code: "en" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: payload.deadline.title },
+              { type: "text", text: payload.deadline.courseTitle },
+              { type: "text", text: payload.deadline.courseCode },
+              { type: "text", text: payload.deadline.dueDate },
+            ],
+          },
+        ],
+      },
+    };
+
+    const response = await fetch(
+      `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messageBody),
+      },
+    );
+
+    const data = (await response.json()) as WhatsAppResponse;
+
+    if (!response.ok) {
+      const errorMsg = data.error?.message || "Unknown Meta API error";
+      console.error("[whatsapp/overdue-error]", {
+        status: response.status,
+        error: errorMsg,
+        errorCode: data.error?.code,
+        errorSubcode: data.error?.error_subcode,
+        fbtrace_id: data.error?.fbtrace_id,
+        templateName: WHATSAPP_TEMPLATE_OVERDUE,
+        maskedPhone: maskPhoneNumber(phoneNumber),
+      });
+      return { success: false, error: errorMsg };
+    }
+
+    console.log("[whatsapp/overdue-sent]", {
+      templateName: WHATSAPP_TEMPLATE_OVERDUE,
+      maskedPhone: maskPhoneNumber(phoneNumber),
+      messageId: data.messages?.[0]?.id,
+      messageStatus: data.messages?.[0]?.message_status,
+    });
+
+    return { success: true, maskedPhone: maskPhoneNumber(phoneNumber) };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Network/Unknown error";
+    console.error("[whatsapp/overdue-exception]", errorMessage);
     return { success: false, error: errorMessage };
   }
 }

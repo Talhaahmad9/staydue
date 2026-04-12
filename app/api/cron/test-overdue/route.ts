@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { connectToDatabase, UserModel, DeadlineModel } from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
 import { sendOverdueEmail } from "@/lib/resend";
+import { sendWhatsAppOverdueMessage } from "@/lib/whatsapp";
 import { getDaysDifferenceInTimezone } from "@/utils/date";
 
 export async function GET(): Promise<NextResponse> {
@@ -112,12 +113,32 @@ export async function GET(): Promise<NextResponse> {
         const emailResult = await sendOverdueEmail(payload);
         results.push({
           title: deadline.title,
+          channel: "email",
           sent: emailResult.success,
           error: emailResult.error,
           reason,
           daysSinceDue,
           notificationCount: count,
         });
+
+        if (user.phone) {
+          const whatsappResult = await sendWhatsAppOverdueMessage(payload, user.phone);
+          results.push({
+            title: deadline.title,
+            channel: "whatsapp",
+            sent: whatsappResult.success,
+            ...(whatsappResult.error && { error: whatsappResult.error }),
+            ...(whatsappResult.maskedPhone && { maskedPhone: whatsappResult.maskedPhone }),
+          });
+        } else {
+          results.push({
+            title: deadline.title,
+            channel: "whatsapp",
+            sent: false,
+            skipped: true,
+            reason: "No phone number",
+          });
+        }
       } else {
         results.push({
           title: deadline.title,
