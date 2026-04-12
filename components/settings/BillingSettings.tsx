@@ -1,39 +1,136 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import SettingsSection from "./SettingsLayout";
+import BillingUpgradeForm from "./BillingUpgradeForm";
+import Spinner from "@/components/shared/loaders/Spinner";
+
+interface StatusResponse {
+  isPro: boolean;
+  proDaysLeft: number | null;
+  trialDaysLeft: number | null;
+  hasPhone: boolean;
+  subscription: {
+    status: "pending" | "active" | "expired" | "rejected";
+    plan: "monthly" | "semester";
+    endDate: string | null;
+  } | null;
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default function BillingSettings(): React.ReactElement {
-  return (
-    <SettingsSection title="Billing" description="Manage your subscription and billing">
-      <div className="flex flex-col items-center text-center py-8">
-        <div className="w-8 h-8 mb-4 text-brand opacity-70">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="5" width="18" height="14" rx="2" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
+  const [status, setStatus] = useState<StatusResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "semester">("monthly");
+
+  useEffect(() => {
+    fetch("/api/subscription/status")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch");
+        return res.json() as Promise<StatusResponse>;
+      })
+      .then((data) => setStatus(data))
+      .catch((error) => console.error("[billing/status]", error))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <SettingsSection title="Billing" description="Manage your subscription">
+        <div className="h-24 flex items-center justify-center">
+          <Spinner size="sm" />
         </div>
+      </SettingsSection>
+    );
+  }
 
-        <span className="inline-block bg-brand-light border border-brand/40 text-brand text-xs px-2.5 py-0.5 rounded-full font-medium mb-3">
-          Free plan
-        </span>
-
-        <h3 className="text-base font-medium text-text-primary mb-2">Billing</h3>
-        <p className="text-sm text-text-muted max-w-sm mb-6">
-          Upgrade options will be available here soon.
-        </p>
-
-        <button
-          disabled
-          className="bg-page-surface border border-line text-text-disabled text-sm font-medium px-4 py-2 rounded-lg cursor-not-allowed opacity-50"
-        >
-          Upgrade plan
-        </button>
-      </div>
+  return (
+    <SettingsSection title="Billing" description="Manage your subscription">
+      {status?.isPro ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Pro plan</p>
+              <p className="text-xs text-text-muted mt-0.5">{status.proDaysLeft} days remaining</p>
+            </div>
+            <span className="bg-brand-light border border-brand/40 text-brand text-xs font-medium px-2.5 py-0.5 rounded-full">
+              Active
+            </span>
+          </div>
+          <p className="text-xs text-text-muted">
+            Your plan renews or expires on {formatDate(status.subscription?.endDate ?? null)}.
+            To extend, submit a new payment after expiry.
+          </p>
+        </div>
+      ) : status?.subscription?.status === "pending" ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-text-primary">Payment under review</p>
+            <span className="bg-urgency-tomorrow border border-urgency-tomorrowBorder text-urgency-tomorrowText text-xs font-medium px-2.5 py-0.5 rounded-full">
+              Pending
+            </span>
+          </div>
+          <p className="text-xs text-text-muted">
+            We received your payment screenshot and are reviewing it.
+            You will receive an email once approved — usually within a few hours.
+          </p>
+        </div>
+      ) : status?.subscription?.status === "rejected" ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-text-primary">Payment not approved</p>
+            <span className="bg-urgency-today border border-urgency-todayBorder text-urgency-todayText text-xs font-medium px-2.5 py-0.5 rounded-full">
+              Rejected
+            </span>
+          </div>
+          <p className="text-xs text-text-muted mb-4">
+            Your payment could not be verified. Please try again with a clear screenshot and correct transaction ID.
+          </p>
+          <BillingUpgradeForm />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-text-muted mb-3">Choose a plan</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={() => setSelectedPlan("monthly")}
+                className={`text-left p-4 rounded-xl border transition-colors ${
+                  selectedPlan === "monthly"
+                    ? "border-brand bg-brand-light"
+                    : "border-line/50 bg-page-surface hover:border-line-strong"
+                }`}
+              >
+                <p className="text-sm font-medium text-text-primary">Monthly</p>
+                <p className="text-lg font-medium text-text-primary mt-1">Rs 300</p>
+                <p className="text-xs text-text-muted mt-0.5">per month</p>
+              </button>
+              <button
+                onClick={() => setSelectedPlan("semester")}
+                className={`text-left p-4 rounded-xl border transition-colors ${
+                  selectedPlan === "semester"
+                    ? "border-brand bg-brand-light"
+                    : "border-line/50 bg-page-surface hover:border-line-strong"
+                }`}
+              >
+                <p className="text-sm font-medium text-text-primary">Semester</p>
+                <p className="text-lg font-medium text-text-primary mt-1">Rs 1000</p>
+                <p className="text-xs text-text-muted mt-0.5">4 months</p>
+              </button>
+            </div>
+          </div>
+          <BillingUpgradeForm plan={selectedPlan} />
+        </div>
+      )}
     </SettingsSection>
   );
 }
+

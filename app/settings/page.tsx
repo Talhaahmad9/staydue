@@ -22,6 +22,7 @@ export interface SettingsUserData {
   moodleCalendarUrl: string;
   updatedAt: string | null;
   phone: string;
+  isPhoneVerified: boolean;
   notificationPreferences: {
     emailEnabled: boolean;
     reminderIntervals: string[];
@@ -49,6 +50,7 @@ export default async function SettingsPage(): Promise<React.ReactElement> {
     moodleCalendarUrl: user.moodleCalendarUrl ?? "",
     updatedAt: user.updatedAt?.toISOString() ?? null,
     phone: user.phone ?? "",
+    isPhoneVerified: user.isPhoneVerified ?? false,
     notificationPreferences: {
       emailEnabled: user.notificationPreferences?.emailEnabled ?? true,
       reminderIntervals: user.notificationPreferences?.reminderIntervals ?? ["3-day", "1-day", "day-of"],

@@ -3,6 +3,28 @@ import { sendReminderEmail } from "@/lib/resend";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { DeadlineNotificationPayload } from "@/types/notification";
 
+function isWhatsAppEligible(user: {
+  isPro: boolean;
+  proExpiresAt: Date | null;
+  trialStartedAt: Date | null;
+}): boolean {
+  const now = new Date();
+
+  if (user.isPro && user.proExpiresAt && user.proExpiresAt > now) {
+    return true;
+  }
+
+  if (user.trialStartedAt) {
+    const msElapsed = now.getTime() - user.trialStartedAt.getTime();
+    const daysElapsed = msElapsed / (1000 * 60 * 60 * 24);
+    if (daysElapsed <= 7) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export async function sendReminderNotifications(
   payload: DeadlineNotificationPayload,
 ): Promise<{ success: boolean; whatsappSent: boolean }> {
@@ -31,13 +53,22 @@ export async function sendReminderNotifications(
   }
 
   try {
-    const user = await UserModel.findById(payload.userId).lean();
-    if (user?.phone) {
-      const whatsappResult = await sendWhatsAppMessage(
-        payload,
-        user.phone,
-        false,
-      );
+    const user = await UserModel.findById(payload.userId)
+      .select("phone isPro proExpiresAt trialStartedAt")
+      .lean();
+
+    if (!user?.phone) {
+      console.log("[notify/whatsapp-skipped]", {
+        reason: "No phone number on user",
+        userId: payload.userId,
+      });
+    } else if (!isWhatsAppEligible(user)) {
+      console.log("[notify/whatsapp-skipped]", {
+        reason: "User not pro or trial expired",
+        userId: payload.userId,
+      });
+    } else {
+      const whatsappResult = await sendWhatsAppMessage(payload, user.phone, false);
       whatsappSent = whatsappResult.success;
       if (!whatsappSent) {
         console.warn("[notify/whatsapp-failed]", {
@@ -46,23 +77,20 @@ export async function sendReminderNotifications(
           maskedPhone: whatsappResult.maskedPhone,
         });
       } else {
+        await UserModel.updateOne(
+          { _id: payload.userId },
+          { $inc: { whatsappTrialUsed: 1 } }
+        );
         console.log("[notify/whatsapp-success]", {
           deadlineId: payload.deadlineId,
           maskedPhone: whatsappResult.maskedPhone,
         });
       }
-    } else {
-      console.log("[notify/whatsapp-skipped]", {
-        reason: "No phone number on user",
-        userId: payload.userId,
-      });
     }
   } catch (whatsappError) {
     console.error(
       "[notify/whatsapp-send]",
-      whatsappError instanceof Error
-        ? whatsappError.message
-        : String(whatsappError),
+      whatsappError instanceof Error ? whatsappError.message : String(whatsappError),
     );
   }
 
@@ -130,3 +158,6 @@ export async function buildTestNotificationPayload(
     },
   };
 }
+
+// NOTE: Overdue WhatsApp gating must also be applied in app/api/cron/notify/route.ts
+// where overdue WhatsApp messages are sent directly.

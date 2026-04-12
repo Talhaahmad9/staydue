@@ -7,6 +7,11 @@ export interface User {
   admissionYear?: string;
   timezone: string;
   hasCompletedOnboarding: boolean;
+  isPro: boolean;
+  proExpiresAt: Date | null;
+  trialStartedAt: Date | null;
+  trialPhoneNumber: string | null;
+  whatsappTrialUsed: number;
   createdAt: Date;
   updatedAt: Date;
 }

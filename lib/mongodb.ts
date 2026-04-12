@@ -23,6 +23,11 @@ interface UserDocument {
   phoneOtp?: string;
   phoneOtpExpiry?: Date;
   notificationPreferences: NotificationPreferences;
+  isPro: boolean;
+  proExpiresAt: Date | null;
+  trialStartedAt: Date | null;
+  trialPhoneNumber: string | null;
+  whatsappTrialUsed: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -90,6 +95,11 @@ const userSchema = new Schema<UserDocument>(
         default: ["3-day", "1-day", "day-of"],
       },
     },
+    isPro: { type: Boolean, required: true, default: false },
+    proExpiresAt: { type: Date, default: null },
+    trialStartedAt: { type: Date, default: null },
+    trialPhoneNumber: { type: String, default: null },
+    whatsappTrialUsed: { type: Number, required: true, default: 0 },
   },
   { timestamps: true }
 );
@@ -111,6 +121,76 @@ const deadlineSchema = new Schema<DeadlineDocument>(
     overdueNotifiedAt: { type: Date, required: false },
     overdueNotificationCount: { type: Number, required: true, default: 0 },
     reminderSentDates: { type: [Date], required: true, default: [] },
+  },
+  { timestamps: true }
+);
+
+interface SubscriptionDocument {
+  userId: mongoose.Types.ObjectId;
+  plan: "monthly" | "semester";
+  status: "pending" | "active" | "expired" | "rejected";
+  amount: number;
+  currency: string;
+  startDate: Date | null;
+  endDate: Date | null;
+  transactionId: string;
+  screenshotKey: string;
+  paymentMethod: string;
+  reviewedAt: Date | null;
+  reviewedBy: string | null;
+  rejectionReason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const subscriptionSchema = new Schema<SubscriptionDocument>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    plan: { type: String, enum: ["monthly", "semester"], required: true },
+    status: { type: String, enum: ["pending", "active", "expired", "rejected"], required: true, default: "pending", index: true },
+    amount: { type: Number, required: true },
+    currency: { type: String, default: "PKR" },
+    startDate: { type: Date, default: null },
+    endDate: { type: Date, default: null },
+    transactionId: { type: String, required: true, trim: true },
+    screenshotKey: { type: String, required: true },
+    paymentMethod: { type: String, required: true, trim: true },
+    reviewedAt: { type: Date, default: null },
+    reviewedBy: { type: String, default: null },
+    rejectionReason: { type: String, default: null },
+  },
+  { timestamps: true }
+);
+
+interface DiscountCodeDocument {
+  code: string;
+  description: string;
+  discountValue: number;
+  applicablePlans: ("monthly" | "semester")[];
+  isActive: boolean;
+  validFrom: Date | null;
+  validUntil: Date | null;
+  maxUses: number | null;
+  usedCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const discountCodeSchema = new Schema<DiscountCodeDocument>(
+  {
+    code: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
+    description: { type: String, required: true, trim: true },
+    discountValue: { type: Number, required: true },
+    applicablePlans: {
+      type: [String],
+      enum: ["monthly", "semester"],
+      required: true,
+    },
+    isActive: { type: Boolean, required: true, default: true },
+    validFrom: { type: Date, default: null },
+    validUntil: { type: Date, default: null },
+    maxUses: { type: Number, default: null },
+    usedCount: { type: Number, required: true, default: 0 },
   },
   { timestamps: true }
 );
@@ -159,4 +239,10 @@ export const CourseCatalogModel: Model<CourseCatalogDocument> =
   mongoose.models.CourseCatalog ||
   mongoose.model<CourseCatalogDocument>("CourseCatalog", courseCatalogSchema);
 
-export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry, NotificationPreferences };
+export const SubscriptionModel: Model<SubscriptionDocument> =
+  mongoose.models.Subscription || mongoose.model<SubscriptionDocument>("Subscription", subscriptionSchema);
+
+export const DiscountCodeModel: Model<DiscountCodeDocument> =
+  mongoose.models.DiscountCode || mongoose.model<DiscountCodeDocument>("DiscountCode", discountCodeSchema);
+
+export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry, NotificationPreferences, SubscriptionDocument, DiscountCodeDocument };

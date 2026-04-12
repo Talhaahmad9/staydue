@@ -128,7 +128,11 @@ export default function NotificationSettings({ user }: NotificationSettingsProps
         )}
 
         {/* Phone Number */}
-        <PhoneNumberInput initialPhone={user.phone ?? ""} onSave={() => {}} />
+        <PhoneNumberInput
+          initialPhone={user.phone ?? ""}
+          isPhoneVerified={user.isPhoneVerified ?? false}
+          onVerified={() => {}}
+        />
 
         {/* Messages */}
         {error && <p className="text-sm text-urgency-todayText">{error}</p>}
