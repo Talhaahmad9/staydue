@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { connectToDatabase, UserModel, SubscriptionModel } from "@/lib/mongodb";
 
 export async function GET(request: Request): Promise<NextResponse> {
+  // FIX 1A: Reject early if CRON_SECRET is not configured
+  if (!process.env.CRON_SECRET) {
+    console.error('[cron] CRON_SECRET env var is not set');
+    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+  }
+
   const authHeader = request.headers.get("authorization");
   const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
 

@@ -1,7 +1,16 @@
+import mongoose from "mongoose";
 import { DeadlineModel, UserModel } from "@/lib/mongodb";
 import { sendReminderEmail } from "@/lib/resend";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import { DeadlineNotificationPayload } from "@/types/notification";
+import { DeadlineNotificationPayload, ReminderInterval } from "@/types/notification";
+
+const MS_PER_HOUR = 1000 * 60 * 60;
+
+const INTERVAL_COOLDOWN_MS: Record<ReminderInterval, number> = {
+  "3-day": 36 * MS_PER_HOUR,
+  "1-day": 16 * MS_PER_HOUR,
+  "day-of": 6 * MS_PER_HOUR,
+};
 
 function isWhatsAppEligible(user: {
   isPro: boolean;
@@ -27,8 +36,44 @@ function isWhatsAppEligible(user: {
 
 export async function sendReminderNotifications(
   payload: DeadlineNotificationPayload,
+  whatsappSentUsers: Set<string>,
 ): Promise<{ success: boolean; whatsappSent: boolean }> {
   let whatsappSent = false;
+
+  // FIX 1C: Atomic claim — prevents duplicate sends across concurrent cron runs.
+  // Writes to reminderSentDates only if no send has occurred within the cooldown window.
+  // DO NOT REMOVE existing post-send reminderSentDates update below.
+  const cooldownMs = INTERVAL_COOLDOWN_MS[payload.deadline.interval] ?? 6 * MS_PER_HOUR;
+  const deadlineObjectId = new mongoose.Types.ObjectId(payload.deadlineId);
+  const claimed = await DeadlineModel.findOneAndUpdate(
+    {
+      _id: deadlineObjectId,
+      reminderSentDates: {
+        $not: {
+          $elemMatch: {
+            $gte: new Date(Date.now() - cooldownMs),
+          },
+        },
+      },
+    },
+    {
+      $push: {
+        reminderSentDates: {
+          $each: [new Date()],
+          $slice: -10,
+        },
+      },
+    },
+    { new: false },
+  );
+
+  if (claimed === null) {
+    console.log("[notify/reminder-skipped-duplicate]", {
+      deadlineId: payload.deadlineId,
+      interval: payload.deadline.interval,
+    });
+    return { success: false, whatsappSent: false };
+  }
 
   const emailResult = await sendReminderEmail(payload);
   if (!emailResult.success) {
@@ -38,18 +83,6 @@ export async function sendReminderNotifications(
       error: emailResult.error,
     });
     return { success: false, whatsappSent: false };
-  }
-
-  try {
-    await DeadlineModel.updateOne(
-      { _id: payload.deadlineId },
-      { $push: { reminderSentDates: new Date() } },
-    );
-  } catch (updateError) {
-    console.error(
-      "[notify/update-reminder]",
-      updateError instanceof Error ? updateError.message : String(updateError),
-    );
   }
 
   try {
@@ -67,6 +100,12 @@ export async function sendReminderNotifications(
         reason: "User not pro or trial expired",
         userId: payload.userId,
       });
+    } else if (whatsappSentUsers.has(payload.userId)) {
+      // FIX 1B: Per-user WhatsApp deduplication within a single cron run
+      console.log("[notify/whatsapp-skipped]", {
+        reason: "Already sent WhatsApp to this user in current cron run",
+        userId: payload.userId,
+      });
     } else {
       const whatsappResult = await sendWhatsAppMessage(payload, user.phone, false);
       whatsappSent = whatsappResult.success;
@@ -77,6 +116,7 @@ export async function sendReminderNotifications(
           maskedPhone: whatsappResult.maskedPhone,
         });
       } else {
+        whatsappSentUsers.add(payload.userId);
         await UserModel.updateOne(
           { _id: payload.userId },
           { $inc: { whatsappTrialUsed: 1 } }
