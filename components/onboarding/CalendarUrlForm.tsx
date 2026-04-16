@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown } from "lucide-react";
 
 import ButtonLoader from "@/components/shared/loaders/ButtonLoader";
 
@@ -19,13 +22,13 @@ export default function CalendarUrlForm({
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState("");
   const [admissionYear, setAdmissionYear] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setLoading(true);
     setError(null);
 
-    // Validate required fields first
     if (!url.trim()) {
       setError("Please enter a calendar URL.");
       setLoading(false);
@@ -40,7 +43,6 @@ export default function CalendarUrlForm({
 
     try {
       const payload = { url, phone, admissionYear };
-      console.log("[CalendarUrlForm] Payload before fetch:", JSON.stringify(payload));
 
       const response = await fetch("/api/calendar", {
         method: "POST",
@@ -78,7 +80,10 @@ export default function CalendarUrlForm({
         </p>
       </div>
       <div className="space-y-2">
-        <label htmlFor="admissionYear" className="block text-xs font-medium uppercase tracking-widest text-text-muted">
+        <label
+          htmlFor="admissionYear"
+          className="block text-xs font-medium uppercase tracking-widest text-text-muted"
+        >
           Admission year
         </label>
         <select
@@ -99,9 +104,65 @@ export default function CalendarUrlForm({
         </select>
       </div>
       <div className="space-y-2">
-        <label htmlFor="url" className="block text-xs font-medium uppercase tracking-widest text-text-muted">
-          Calendar URL
-        </label>
+        <div className="flex items-center justify-between gap-2">
+          <label
+            htmlFor="url"
+            className="block text-xs font-medium uppercase tracking-widest text-text-muted"
+          >
+            Calendar URL
+          </label>
+          <button
+            type="button"
+            onClick={() => setHelpOpen((v) => !v)}
+            className="flex items-center gap-1 text-xs text-text-muted hover:text-brand transition-colors"
+          >
+            How do I find this?
+            <ChevronDown
+              size={12}
+              className={`transition-transform duration-200 ${helpOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+        </div>
+
+        {/* Inline help panel */}
+        <AnimatePresence initial={false}>
+          {helpOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <div className="bg-page-surface border border-line/50 rounded-lg p-4 space-y-3 mb-2">
+                <ol className="space-y-2">
+                  {[
+                    "Log in to lms.iobm.edu.pk with your student credentials.",
+                    'Go to Calendar — click the grid icon at the top and select "Calendar".',
+                    'Scroll to the bottom and click "Export calendar". Select "All events" and "All courses", then click "Get calendar URL" and copy the full URL.',
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-xs text-text-secondary leading-relaxed">
+                      <span className="w-5 h-5 rounded-full bg-brand-light border border-brand/30 inline-flex items-center justify-center text-[10px] font-medium text-brand shrink-0 mt-0.5">
+                        {i + 1}
+                      </span>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+                <Link
+                  href="/how-to-get-url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-brand-hover transition-colors"
+                >
+                  View full guide with screenshots
+                  <span aria-hidden="true">↗</span>
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <input
           id="url"
           type="url"
