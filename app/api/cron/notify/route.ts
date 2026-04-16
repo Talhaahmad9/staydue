@@ -106,6 +106,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         const claimedOverdue = await DeadlineModel.findOneAndUpdate(
           {
             _id: payload.deadlineId,
+            isCompleted: false,
             overdueNotificationCount: { $lt: 3 },
           },
           {
@@ -143,30 +144,50 @@ export async function GET(request: Request): Promise<NextResponse> {
                 userId: payload.userId,
               });
             } else if (whatsappSentUsers.has(payload.userId)) {
-              // FIX 1B: Per-user WhatsApp deduplication within a single cron run
               console.log("[cron/notify/whatsapp-overdue-skipped]", {
                 reason: "Already sent WhatsApp to this user in current cron run",
                 userId: payload.userId,
               });
             } else {
-              const whatsappResult = await sendWhatsAppOverdueMessage(payload, user.phone);
-              if (whatsappResult.success) {
-                whatsappOverdueSent++;
-                whatsappSentUsers.add(payload.userId);
-                await UserModel.updateOne(
-                  { _id: payload.userId },
-                  { $inc: { whatsappTrialUsed: 1 } }
-                );
-                console.log("[cron/notify/whatsapp-overdue-success]", {
-                  deadlineId: payload.deadlineId,
-                  maskedPhone: whatsappResult.maskedPhone,
+              // DB-level dedup: atomic claim prevents duplicate WhatsApp across concurrent cron instances
+              const startOfToday = new Date();
+              startOfToday.setUTCHours(0, 0, 0, 0);
+              const whatsappClaimed = await UserModel.findOneAndUpdate(
+                {
+                  _id: payload.userId,
+                  $or: [
+                    { lastWhatsappSentAt: null },
+                    { lastWhatsappSentAt: { $lt: startOfToday } },
+                  ],
+                },
+                { $set: { lastWhatsappSentAt: new Date() } },
+                { new: false },
+              );
+              if (!whatsappClaimed) {
+                console.log("[cron/notify/whatsapp-overdue-skipped]", {
+                  reason: "Already sent WhatsApp today (DB dedup)",
+                  userId: payload.userId,
                 });
               } else {
-                console.warn("[cron/notify/whatsapp-overdue-failed]", {
-                  deadlineId: payload.deadlineId,
-                  error: whatsappResult.error,
-                  maskedPhone: whatsappResult.maskedPhone,
-                });
+                const whatsappResult = await sendWhatsAppOverdueMessage(payload, user.phone);
+                if (whatsappResult.success) {
+                  whatsappOverdueSent++;
+                  whatsappSentUsers.add(payload.userId);
+                  await UserModel.updateOne(
+                    { _id: payload.userId },
+                    { $inc: { whatsappTrialUsed: 1 } }
+                  );
+                  console.log("[cron/notify/whatsapp-overdue-success]", {
+                    deadlineId: payload.deadlineId,
+                    maskedPhone: whatsappResult.maskedPhone,
+                  });
+                } else {
+                  console.warn("[cron/notify/whatsapp-overdue-failed]", {
+                    deadlineId: payload.deadlineId,
+                    error: whatsappResult.error,
+                    maskedPhone: whatsappResult.maskedPhone,
+                  });
+                }
               }
             }
           } catch (whatsappError) {

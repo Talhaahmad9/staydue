@@ -18,13 +18,6 @@ export function generateResetToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
-export async function hashToken(token: string): Promise<string> {
-  return bcryptjs.hash(token, 10);
-}
-
-export async function verifyToken(
-  token: string,
-  hash: string
-): Promise<boolean> {
-  return bcryptjs.compare(token, hash);
+export function hashTokenSHA256(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
 }

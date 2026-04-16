@@ -3,7 +3,7 @@ import { z } from "zod";
 import { hash } from "bcryptjs";
 
 import { UserModel, connectToDatabase } from "@/lib/mongodb";
-import { verifyToken } from "@/utils/otp";
+import { hashTokenSHA256 } from "@/utils/otp";
 
 const resetSchema = z.object({
   token: z.string().length(64, "Invalid reset token").regex(/^[a-f0-9]+$/, "Invalid token format"),
@@ -24,18 +24,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     await connectToDatabase();
 
-    // Find users with valid reset tokens
-    const users = await UserModel.find({
+    const hashedToken = hashTokenSHA256(parsed.data.token);
+    const matchedUser = await UserModel.findOne({
+      passwordResetToken: hashedToken,
       passwordResetTokenExpiry: { $gt: new Date() },
     }).lean();
-
-    let matchedUser = null;
-    for (const user of users) {
-      if (user.passwordResetToken && await verifyToken(parsed.data.token, user.passwordResetToken)) {
-        matchedUser = user;
-        break;
-      }
-    }
 
     if (!matchedUser) {
       return NextResponse.json(

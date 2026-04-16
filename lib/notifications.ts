@@ -13,31 +13,43 @@ export async function getDeadlinesNeedingReminder(): Promise<DeadlineNotificatio
     await connectToDatabase();
 
     const now = new Date();
-    const payloads: DeadlineNotificationPayload[] = [];
 
-    // Get all users who have completed onboarding and have email
+    // Single query: all qualifying deadlines across all users
+    const allDeadlines = await DeadlineModel.find({
+      status: "upcoming",
+      isCompleted: false,
+      dueDate: { $gt: now },
+    })
+      .sort({ dueDate: 1 })
+      .lean();
+
+    if (allDeadlines.length === 0) return [];
+
+    // Batch fetch eligible users (2 queries total instead of N+1)
+    const userIds = [...new Set(allDeadlines.map((d) => d.userId.toString()))];
     const users = await UserModel.find({
+      _id: { $in: userIds },
       hasCompletedOnboarding: true,
       email: { $exists: true, $ne: null },
     }).lean();
 
-    for (const user of users) {
+    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+    // Group deadlines by user
+    const deadlinesByUser = new Map<string, typeof allDeadlines>();
+    for (const deadline of allDeadlines) {
+      const uid = deadline.userId.toString();
+      if (!userMap.has(uid)) continue;
+      if (!deadlinesByUser.has(uid)) deadlinesByUser.set(uid, []);
+      deadlinesByUser.get(uid)!.push(deadline);
+    }
+
+    const payloads: DeadlineNotificationPayload[] = [];
+
+    for (const [uid, deadlines] of deadlinesByUser) {
+      const user = userMap.get(uid)!;
       if (!user.email) continue;
-
-      // Skip if email notifications are disabled
-      if (user.notificationPreferences?.emailEnabled === false) {
-        continue;
-      }
-
-      // Get all upcoming deadlines for this user
-      const deadlines = await DeadlineModel.find({
-        userId: user._id,
-        status: "upcoming",
-        isCompleted: false,
-        dueDate: { $gt: now },
-      })
-        .sort({ dueDate: 1 })
-        .lean();
+      if (user.notificationPreferences?.emailEnabled === false) continue;
 
       for (const deadline of deadlines) {
         const intervals = getIntervalsForDeadline(deadline.dueDate, deadline.reminderSentDates || []);
@@ -54,7 +66,7 @@ export async function getDeadlinesNeedingReminder(): Promise<DeadlineNotificatio
 
           const payload: DeadlineNotificationPayload = {
             deadlineId: deadline._id.toString(),
-            userId: user._id.toString(),
+            userId: uid,
             userEmail: user.email,
             userName: user.name || "Student",
             deadline: {
@@ -88,7 +100,7 @@ export async function getDeadlinesNeedingReminder(): Promise<DeadlineNotificatio
     return payloads;
   } catch (error) {
     console.error("[notifications/get-reminders]", error instanceof Error ? error.message : String(error));
-    return [];
+    throw error;
   }
 }
 
@@ -98,80 +110,80 @@ export async function getDeadlinesNeedingOverdueNotice(): Promise<DeadlineNotifi
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const payloads: DeadlineNotificationPayload[] = [];
 
-    // Get all users
+    // Single query: all qualifying overdue deadlines across all users
+    const allOverdue = await DeadlineModel.find({
+      status: "overdue",
+      isCompleted: false,
+      dueDate: { $gte: thirtyDaysAgo, $lt: now },
+      overdueNotificationCount: { $lt: 3 },
+    }).lean();
+
+    if (allOverdue.length === 0) return [];
+
+    // Batch fetch eligible users (2 queries total instead of N+1)
+    const userIds = [...new Set(allOverdue.map((d) => d.userId.toString()))];
     const users = await UserModel.find({
+      _id: { $in: userIds },
       hasCompletedOnboarding: true,
       email: { $exists: true, $ne: null },
     }).lean();
 
-    for (const user of users) {
-      if (!user.email) continue;
+    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
-      // Get overdue deadlines within 30 days
-      const overdueDeadlines = await DeadlineModel.find({
-        userId: user._id,
-        status: "overdue",
-        isCompleted: false,
-        dueDate: { $gte: thirtyDaysAgo, $lt: now },
-        overdueNotificationCount: { $lt: 3 },
-      }).lean();
+    const payloads: DeadlineNotificationPayload[] = [];
 
-      for (const deadline of overdueDeadlines) {
-        let shouldSend = false;
-        // Calculate days using user's timezone to match dashboard logic
-        const userTimezone = user.timezone || "Asia/Karachi";
-        const daysSinceDue = getDaysDifferenceInTimezone(now, deadline.dueDate, userTimezone);
+    for (const deadline of allOverdue) {
+      const uid = deadline.userId.toString();
+      const user = userMap.get(uid);
+      if (!user || !user.email) continue;
 
-        const count = deadline.overdueNotificationCount || 0;
+      let shouldSend = false;
+      const userTimezone = user.timezone || "Asia/Karachi";
+      const daysSinceDue = getDaysDifferenceInTimezone(now, deadline.dueDate, userTimezone);
 
-        if (count === 0) {
-          // First notification: send if 1-2 days overdue
-          shouldSend = daysSinceDue >= 1 && daysSinceDue <= 2;
-        } else if (count === 1) {
-          // Second notification: send if 3+ days since the last notification
-          const daysSinceNotified = deadline.overdueNotifiedAt
-            ? getDaysDifferenceInTimezone(now, deadline.overdueNotifiedAt, userTimezone)
-            : 0;
-          shouldSend = daysSinceNotified >= 3;
-        } else if (count === 2) {
-          // Third notification: send if 7+ days since the last notification
-          const daysSinceNotified = deadline.overdueNotifiedAt
-            ? getDaysDifferenceInTimezone(now, deadline.overdueNotifiedAt, userTimezone)
-            : 0;
-          shouldSend = daysSinceNotified >= 7;
-        }
+      const count = deadline.overdueNotificationCount || 0;
 
-        if (shouldSend) {
-          const payload: DeadlineNotificationPayload = {
-            deadlineId: deadline._id.toString(),
-            userId: user._id.toString(),
-            userEmail: user.email,
-            userName: user.name || "Student",
-            deadline: {
-              title: deadline.title,
-              courseCode: deadline.courseCode,
-              courseTitle: deadline.courseTitle,
-              dueDate: deadline.dueDate.toLocaleDateString("en-GB", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              }),
-              interval: "day-of", // Use day-of styling for overdue
-              allUpcoming: [], // No upcoming deadlines for overdue notices
-            },
-          };
+      if (count === 0) {
+        shouldSend = daysSinceDue >= 1 && daysSinceDue <= 2;
+      } else if (count === 1) {
+        const daysSinceNotified = deadline.overdueNotifiedAt
+          ? getDaysDifferenceInTimezone(now, deadline.overdueNotifiedAt, userTimezone)
+          : 0;
+        shouldSend = daysSinceNotified >= 3;
+      } else if (count === 2) {
+        const daysSinceNotified = deadline.overdueNotifiedAt
+          ? getDaysDifferenceInTimezone(now, deadline.overdueNotifiedAt, userTimezone)
+          : 0;
+        shouldSend = daysSinceNotified >= 7;
+      }
 
-          payloads.push(payload);
-        }
+      if (shouldSend) {
+        payloads.push({
+          deadlineId: deadline._id.toString(),
+          userId: uid,
+          userEmail: user.email,
+          userName: user.name || "Student",
+          deadline: {
+            title: deadline.title,
+            courseCode: deadline.courseCode,
+            courseTitle: deadline.courseTitle,
+            dueDate: deadline.dueDate.toLocaleDateString("en-GB", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            }),
+            interval: "day-of",
+            allUpcoming: [],
+          },
+        });
       }
     }
 
     return payloads;
   } catch (error) {
     console.error("[notifications/get-overdue]", error instanceof Error ? error.message : String(error));
-    return [];
+    throw error;
   }
 }
 
@@ -194,21 +206,21 @@ function getIntervalsForDeadline(dueDate: Date, reminderSentDates: Date[]): Remi
   const dayOfCooldownMs = 6 * msPerHour;
 
   // 3-day interval: between 48hrs and 84hrs from now
-  if (hoursUntilDue >= 48 && hoursUntilDue <= 84) {
+  if (hoursUntilDue >= 48 && hoursUntilDue < 84) {
     if (!wasRecentlySent(reminderSentDates, threeDayCooldownMs)) {
       intervals.push("3-day");
     }
   }
 
   // 1-day interval: between 8hrs and 48hrs from now
-  if (hoursUntilDue >= 8 && hoursUntilDue <= 48) {
+  if (hoursUntilDue >= 8 && hoursUntilDue < 48) {
     if (!wasRecentlySent(reminderSentDates, oneDayCooldownMs)) {
       intervals.push("1-day");
     }
   }
 
   // day-of interval: between 0.5hrs and 8hrs from now
-  if (hoursUntilDue >= 0.5 && hoursUntilDue <= 8) {
+  if (hoursUntilDue >= 0.5 && hoursUntilDue < 8) {
     if (!wasRecentlySent(reminderSentDates, dayOfCooldownMs)) {
       intervals.push("day-of");
     }

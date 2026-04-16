@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { UserModel, DeadlineModel, connectToDatabase } from "@/lib/mongodb";
+import { UserModel, DeadlineModel, SubscriptionModel, connectToDatabase } from "@/lib/mongodb";
 
 export async function DELETE(): Promise<NextResponse> {
   try {
@@ -12,8 +12,9 @@ export async function DELETE(): Promise<NextResponse> {
 
     await connectToDatabase();
 
-    // Delete all deadlines for this user
+    // Delete all user data
     await DeadlineModel.deleteMany({ userId: session.user.id });
+    await SubscriptionModel.deleteMany({ userId: session.user.id });
 
     // Delete the user
     await UserModel.findByIdAndDelete(session.user.id);

@@ -14,6 +14,8 @@ export const rateLimitRules: Record<string, { limit: number; windowMs: number }>
   "/api/calendar": { limit: 10, windowMs: 60 * 60 * 1000 }, // 10/hr
   "/api/settings": { limit: 30, windowMs: 60 * 60 * 1000 }, // 30/hr
   "/api/deadlines": { limit: 60, windowMs: 60 * 60 * 1000 }, // 60/hr
+  "/api/subscription": { limit: 10, windowMs: 60 * 60 * 1000 }, // 10/hr
+  "/api/webhook": { limit: 200, windowMs: 60 * 60 * 1000 }, // 200/hr
 };
 
 /**

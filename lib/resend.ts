@@ -122,7 +122,6 @@ export async function sendOtpEmail(
     }
 
     console.log("[resend/otp/sent]", {
-      to,
       messageId: response.data?.id,
     });
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { UserModel, connectToDatabase } from "@/lib/mongodb";
-import { generateResetToken, hashToken } from "@/utils/otp";
+import { generateResetToken, hashTokenSHA256 } from "@/utils/otp";
 import { sendPasswordResetEmail } from "@/lib/resend";
 
 const forgotSchema = z.object({
@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (user && user.isVerified && user.passwordHash) {
       try {
         const resetToken = generateResetToken();
-        const hashedToken = await hashToken(resetToken);
+        const hashedToken = hashTokenSHA256(resetToken);
         const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
 
         await UserModel.updateOne(

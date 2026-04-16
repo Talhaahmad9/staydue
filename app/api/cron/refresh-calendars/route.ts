@@ -27,31 +27,35 @@ export async function GET(request: Request): Promise<NextResponse> {
     .lean()
     .select("_id moodleCalendarUrl admissionYear");
 
-  const results = await Promise.allSettled(
-    users.map((user) =>
-      syncCalendarForUser({
-        userId: String(user._id),
-        moodleCalendarUrl: user.moodleCalendarUrl!,
-        admissionYear: user.admissionYear!,
-      })
-    )
-  );
-
   let successCount = 0;
   let errorCount = 0;
+  const BATCH_SIZE = 10;
 
-  results.forEach((result, index) => {
-    if (result.status === "fulfilled") {
-      successCount++;
-    } else {
-      errorCount++;
-      console.error(
-        "[cron/refresh-calendars]",
-        String(users[index]._id),
-        result.reason instanceof Error ? result.reason.message : String(result.reason)
-      );
-    }
-  });
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    const batch = users.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map((user) =>
+        syncCalendarForUser({
+          userId: String(user._id),
+          moodleCalendarUrl: user.moodleCalendarUrl!,
+          admissionYear: user.admissionYear!,
+        })
+      )
+    );
+
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        successCount++;
+      } else {
+        errorCount++;
+        console.error(
+          "[cron/refresh-calendars]",
+          String(batch[index]._id),
+          result.reason instanceof Error ? result.reason.message : String(result.reason)
+        );
+      }
+    });
+  }
 
   return NextResponse.json({
     success: true,

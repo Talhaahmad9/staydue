@@ -28,6 +28,7 @@ interface UserDocument {
   trialStartedAt: Date | null;
   trialPhoneNumber: string | null;
   whatsappTrialUsed: number;
+  lastWhatsappSentAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -100,6 +101,7 @@ const userSchema = new Schema<UserDocument>(
     trialStartedAt: { type: Date, default: null },
     trialPhoneNumber: { type: String, default: null },
     whatsappTrialUsed: { type: Number, required: true, default: 0 },
+    lastWhatsappSentAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -212,6 +214,11 @@ const courseCatalogSchema = new Schema<CourseCatalogDocument>(
 
 deadlineSchema.index({ userId: 1, sourceEventId: 1 }, { unique: true });
 deadlineSchema.index({ userId: 1, courseCode: 1 });
+deadlineSchema.index({ status: 1, isCompleted: 1, dueDate: 1 });
+
+userSchema.index({ hasCompletedOnboarding: 1 });
+userSchema.index({ passwordResetTokenExpiry: 1 }, { sparse: true });
+userSchema.index({ isPro: 1, proExpiresAt: 1 });
 
 const globalWithMongoose = globalThis as typeof globalThis & {
   mongooseConnection?: Promise<typeof mongoose>;

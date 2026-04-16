@@ -48,6 +48,7 @@ export async function sendReminderNotifications(
   const claimed = await DeadlineModel.findOneAndUpdate(
     {
       _id: deadlineObjectId,
+      isCompleted: false,
       reminderSentDates: {
         $not: {
           $elemMatch: {
@@ -77,6 +78,11 @@ export async function sendReminderNotifications(
 
   const emailResult = await sendReminderEmail(payload);
   if (!emailResult.success) {
+    // Rollback the claim so next cron run can retry
+    await DeadlineModel.updateOne(
+      { _id: deadlineObjectId },
+      { $pop: { reminderSentDates: 1 } },
+    );
     console.error("[notify/email-failed]", {
       deadlineId: payload.deadlineId,
       userId: payload.userId,
@@ -101,30 +107,50 @@ export async function sendReminderNotifications(
         userId: payload.userId,
       });
     } else if (whatsappSentUsers.has(payload.userId)) {
-      // FIX 1B: Per-user WhatsApp deduplication within a single cron run
       console.log("[notify/whatsapp-skipped]", {
         reason: "Already sent WhatsApp to this user in current cron run",
         userId: payload.userId,
       });
     } else {
-      const whatsappResult = await sendWhatsAppMessage(payload, user.phone, false);
-      whatsappSent = whatsappResult.success;
-      if (!whatsappSent) {
-        console.warn("[notify/whatsapp-failed]", {
-          deadlineId: payload.deadlineId,
-          error: whatsappResult.error,
-          maskedPhone: whatsappResult.maskedPhone,
+      // DB-level dedup: atomic claim prevents duplicate WhatsApp across concurrent cron instances
+      const startOfToday = new Date();
+      startOfToday.setUTCHours(0, 0, 0, 0);
+      const whatsappClaimed = await UserModel.findOneAndUpdate(
+        {
+          _id: payload.userId,
+          $or: [
+            { lastWhatsappSentAt: null },
+            { lastWhatsappSentAt: { $lt: startOfToday } },
+          ],
+        },
+        { $set: { lastWhatsappSentAt: new Date() } },
+        { new: false },
+      );
+      if (!whatsappClaimed) {
+        console.log("[notify/whatsapp-skipped]", {
+          reason: "Already sent WhatsApp today (DB dedup)",
+          userId: payload.userId,
         });
       } else {
-        whatsappSentUsers.add(payload.userId);
-        await UserModel.updateOne(
-          { _id: payload.userId },
-          { $inc: { whatsappTrialUsed: 1 } }
-        );
-        console.log("[notify/whatsapp-success]", {
-          deadlineId: payload.deadlineId,
-          maskedPhone: whatsappResult.maskedPhone,
-        });
+        const whatsappResult = await sendWhatsAppMessage(payload, user.phone, false);
+        whatsappSent = whatsappResult.success;
+        if (!whatsappSent) {
+          console.warn("[notify/whatsapp-failed]", {
+            deadlineId: payload.deadlineId,
+            error: whatsappResult.error,
+            maskedPhone: whatsappResult.maskedPhone,
+          });
+        } else {
+          whatsappSentUsers.add(payload.userId);
+          await UserModel.updateOne(
+            { _id: payload.userId },
+            { $inc: { whatsappTrialUsed: 1 } }
+          );
+          console.log("[notify/whatsapp-success]", {
+            deadlineId: payload.deadlineId,
+            maskedPhone: whatsappResult.maskedPhone,
+          });
+        }
       }
     }
   } catch (whatsappError) {

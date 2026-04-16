@@ -1,4 +1,20 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
+
+function verifySignature(rawBody: string, signature: string | null): boolean {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  if (!appSecret || !signature) return false;
+
+  const expectedSignature = "sha256=" + crypto
+    .createHmac("sha256", appSecret)
+    .update(rawBody)
+    .digest("hex");
+
+  return crypto.timingSafeEqual(
+    Buffer.from(expectedSignature),
+    Buffer.from(signature),
+  );
+}
 
 /**
  * Meta Webhook Verification (GET)
@@ -11,11 +27,9 @@ export async function GET(req: Request) {
   const challenge = searchParams.get("hub.challenge");
 
   if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-    console.log("[whatsapp/webhook] Handshake successful");
     return new Response(challenge ?? "", { status: 200 });
   }
 
-  console.error("[whatsapp/webhook] Handshake failed");
   return new NextResponse("Forbidden", { status: 403 });
 }
 
@@ -24,12 +38,24 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+    const signature = req.headers.get("x-hub-signature-256");
 
-    console.log(
-      "[whatsapp/webhook] Incoming payload:",
-      JSON.stringify(body, null, 2),
-    );
+    if (!verifySignature(rawBody, signature)) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+
+    const body = JSON.parse(rawBody) as {
+      object?: string;
+      entry?: Array<{
+        changes?: Array<{
+          value?: {
+            statuses?: Array<{ id: string; status: string; errors?: unknown }>;
+            messages?: Array<{ from: string; text?: { body: string } }>;
+          };
+        }>;
+      }>;
+    };
 
     if (body.object !== "whatsapp_business_account") {
       return NextResponse.json({ ignored: true });
@@ -39,48 +65,34 @@ export async function POST(req: Request) {
     const changes = entry?.changes?.[0];
     const value = changes?.value;
 
-    // Message status updates
     if (value?.statuses) {
       for (const status of value.statuses) {
-        const messageId = status.id;
-        const statusType = status.status; // sent | delivered | read | failed
-        const recipient = status.recipient_id;
-        const timestamp = status.timestamp;
-        const errors = status.errors;
+        console.log("[whatsapp/webhook/status]", {
+          messageId: status.id,
+          status: status.status,
+        });
 
-        console.log("Status Update:");
-        console.log("  ID:", messageId);
-        console.log("  Status:", statusType);
-        console.log("  To:", recipient);
-        console.log("  Time:", timestamp);
-
-        if (statusType === "failed") {
-          console.error("Message failed:", errors);
+        if (status.status === "failed") {
+          console.error("[whatsapp/webhook/failed]", {
+            messageId: status.id,
+            errors: status.errors,
+          });
         }
-
-        // TODO: store in DB if needed
-        // await saveStatus({ messageId, statusType, recipient, timestamp });
       }
     }
 
-    // Incoming user messages (optional)
     if (value?.messages) {
-      for (const msg of value.messages) {
-        const from = msg.from;
-        const text = msg.text?.body;
-
-        console.log("Incoming message:");
-        console.log("  From:", from);
-        console.log("  Text:", text);
-
-        // TODO: handle or reply if needed
-      }
+      console.log("[whatsapp/webhook/messages]", {
+        count: value.messages.length,
+      });
     }
 
-    // Always respond quickly
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[whatsapp/webhook] Error processing:", error);
+    console.error(
+      "[whatsapp/webhook]",
+      error instanceof Error ? error.message : String(error),
+    );
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

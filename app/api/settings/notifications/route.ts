@@ -59,6 +59,14 @@ export async function PATCH(req: Request): Promise<NextResponse> {
         return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 });
       }
 
+      const user = await UserModel.findById(session.user.id).lean();
+      if (user?.isPhoneVerified) {
+        return NextResponse.json(
+          { error: "Phone number cannot be changed after verification. Contact support for assistance." },
+          { status: 403 }
+        );
+      }
+
       await UserModel.findByIdAndUpdate(session.user.id, { phone: phoneResult.data });
       return NextResponse.json({ success: true });
     }

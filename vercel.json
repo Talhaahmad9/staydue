@@ -2,11 +2,19 @@
   "crons": [
     {
       "path": "/api/cron/notify",
+      "schedule": "5 0 * * *"
+    },
+    {
+      "path": "/api/cron/notify",
       "schedule": "5 6 * * *"
     },
     {
       "path": "/api/cron/notify",
       "schedule": "5 12 * * *"
+    },
+    {
+      "path": "/api/cron/expire-subscriptions",
+      "schedule": "0 0 * * *"
     }
   ]
 }

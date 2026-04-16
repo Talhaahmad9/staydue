@@ -109,5 +109,24 @@ export async function syncCalendarForUser(params: {
     throw new Error(`[calendar/bulkwrite] Failed to save deadlines: ${error instanceof Error ? error.message : String(error)}`);
   }
 
+  // Delete stale deadlines no longer present in the ICS feed
+  // Only safe to delete if the ICS was fully downloaded (contains END:VCALENDAR)
+  if (rawICS.includes("END:VCALENDAR")) {
+    const currentEventIds = uniqueDeadlines.map((d) => d.sourceEventId);
+    try {
+      await DeadlineModel.deleteMany({
+        userId: userObjectId,
+        sourceEventId: { $nin: currentEventIds },
+        isCompleted: false,
+      });
+    } catch (error) {
+      console.error(
+        "[calendar/cleanup]",
+        userId,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
   return { syncedCount: uniqueDeadlines.length };
 }

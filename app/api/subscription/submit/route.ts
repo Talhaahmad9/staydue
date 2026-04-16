@@ -54,6 +54,14 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
+    const MAX_SCREENSHOT_SIZE = 5 * 1024 * 1024; // 5MB
+    if (screenshot.size > MAX_SCREENSHOT_SIZE) {
+      return NextResponse.json(
+        { error: "Screenshot must be under 5MB" },
+        { status: 400 }
+      );
+    }
+
     const result = schema.safeParse({
       plan,
       transactionId,
@@ -68,25 +76,19 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     if (result.data.discountCode) {
       const now = new Date();
-      const discountDoc = await DiscountCodeModel.findOne({
-        code: result.data.discountCode,
-      }).lean();
 
-      if (
-        !discountDoc ||
-        !discountDoc.isActive ||
-        (discountDoc.validFrom && now < discountDoc.validFrom) ||
-        (discountDoc.validUntil && now > discountDoc.validUntil) ||
-        !discountDoc.applicablePlans.includes(result.data.plan)
-      ) {
-        return NextResponse.json({ error: "Discount code is no longer valid" }, { status: 400 });
-      }
-
+      // Single atomic operation: validate all conditions AND increment usage count
+      // This prevents race conditions where two concurrent requests both pass validation
       const updated = await DiscountCodeModel.findOneAndUpdate(
         {
           code: result.data.discountCode,
           isActive: true,
-          $or: [{ maxUses: null }, { $expr: { $lt: ["$usedCount", "$maxUses"] } }],
+          applicablePlans: result.data.plan,
+          $and: [
+            { $or: [{ validFrom: { $exists: false } }, { validFrom: null }, { validFrom: { $lte: now } }] },
+            { $or: [{ validUntil: { $exists: false } }, { validUntil: null }, { validUntil: { $gte: now } }] },
+            { $or: [{ maxUses: null }, { $expr: { $lt: ["$usedCount", "$maxUses"] } }] },
+          ],
         },
         { $inc: { usedCount: 1 } },
         { new: true }
