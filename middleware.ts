@@ -10,11 +10,13 @@ const redis = new Redis({
 
 const limiters: Record<string, Ratelimit> = {
   "/api/auth/verify-email":    new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
+  "/api/auth/verify-phone":    new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
+  "/api/auth/send-phone-otp":  new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   "1 h") }),
   "/api/auth/resend-otp":      new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   "1 h") }),
   "/api/auth/forgot-password": new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   "1 h") }),
   "/api/auth/reset-password":  new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   "1 h") }),
   "/api/auth/signin":          new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
-  "/api/auth":                 new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   "1 h") }),
+  "/api/auth":                 new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(15,  "1 h") }),
   "/api/calendar/refresh":     new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(20,  "1 h") }),
   "/api/calendar":             new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
   "/api/settings":             new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30,  "1 h") }),
