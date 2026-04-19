@@ -34,6 +34,19 @@ function getClientIp(request: NextRequest): string {
   return request.headers.get("x-real-ip") ?? "unknown";
 }
 
+// Routes where IP-based limiting is correct (unauthenticated, brute-force targets)
+const IP_KEYED_PREFIXES = new Set([
+  "/api/auth/verify-email",
+  "/api/auth/verify-phone",
+  "/api/auth/send-phone-otp",
+  "/api/auth/resend-otp",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
+  "/api/auth/signin",
+  "/api/auth",
+  "/api/webhook",
+]);
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -65,9 +78,18 @@ export async function middleware(request: NextRequest) {
   const matchedPrefix = PREFIXES.find((p) => pathname.startsWith(p));
   if (!matchedPrefix) return NextResponse.next();
 
-  const ip = getClientIp(request);
+  // Use session user ID for authenticated routes to avoid CGNAT false positives.
+  // Fall back to IP for unauthenticated routes (signin, signup, etc.)
+  let identifier: string;
+  if (IP_KEYED_PREFIXES.has(matchedPrefix)) {
+    identifier = getClientIp(request);
+  } else {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    identifier = token?.sub ?? getClientIp(request);
+  }
+
   const limiter = limiters[matchedPrefix];
-  const { success, limit, remaining, reset } = await limiter.limit(ip);
+  const { success, limit, remaining, reset } = await limiter.limit(identifier);
 
   const headers: Record<string, string> = {
     "X-RateLimit-Limit": String(limit),
