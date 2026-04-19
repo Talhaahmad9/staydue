@@ -103,6 +103,8 @@ export async function sendWhatsAppMessage(
       ];
     }
 
+    const waController = new AbortController();
+    const waTimeout = setTimeout(() => waController.abort(), 8000);
     const response = await fetch(
       `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
       {
@@ -112,8 +114,9 @@ export async function sendWhatsAppMessage(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(messageBody),
+        signal: waController.signal,
       },
-    );
+    ).finally(() => clearTimeout(waTimeout));
 
     const data = (await response.json()) as WhatsAppResponse;
 
@@ -197,6 +200,8 @@ export async function sendWhatsAppOverdueMessage(
       },
     };
 
+    const waController = new AbortController();
+    const waTimeout = setTimeout(() => waController.abort(), 8000);
     const response = await fetch(
       `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
       {
@@ -206,8 +211,9 @@ export async function sendWhatsAppOverdueMessage(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(messageBody),
+        signal: waController.signal,
       },
-    );
+    ).finally(() => clearTimeout(waTimeout));
 
     const data = (await response.json()) as WhatsAppResponse;
 
@@ -297,6 +303,8 @@ export async function sendWhatsAppBatchReminder(
       },
     };
 
+    const waController = new AbortController();
+    const waTimeout = setTimeout(() => waController.abort(), 8000);
     const response = await fetch(
       `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
       {
@@ -306,8 +314,9 @@ export async function sendWhatsAppBatchReminder(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(messageBody),
+        signal: waController.signal,
       },
-    );
+    ).finally(() => clearTimeout(waTimeout));
 
     const data = (await response.json()) as WhatsAppResponse;
 
@@ -384,6 +393,8 @@ export async function sendWhatsAppBatchOverdue(
       },
     };
 
+    const waController = new AbortController();
+    const waTimeout = setTimeout(() => waController.abort(), 8000);
     const response = await fetch(
       `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
       {
@@ -393,8 +404,9 @@ export async function sendWhatsAppBatchOverdue(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(messageBody),
+        signal: waController.signal,
       },
-    );
+    ).finally(() => clearTimeout(waTimeout));
 
     const data = (await response.json()) as WhatsAppResponse;
 

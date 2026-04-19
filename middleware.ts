@@ -21,6 +21,7 @@ const limiters: Record<string, Ratelimit> = {
   "/api/calendar":             new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
   "/api/settings":             new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30,  "1 h") }),
   "/api/deadlines":            new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(60,  "1 h") }),
+  "/api/subscription/status":  new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(60,  "1 h") }),
   "/api/subscription":         new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
   "/api/webhook":              new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(200, "1 h") }),
 };
