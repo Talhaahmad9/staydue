@@ -105,6 +105,18 @@ export async function syncCalendarForUser(params: {
         },
       }))
     );
+
+    // Fix status for deadlines that were overdue but got rescheduled to the future
+    const now = new Date();
+    await DeadlineModel.updateMany(
+      {
+        userId: userObjectId,
+        status: "overdue",
+        isCompleted: false,
+        dueDate: { $gt: now },
+      },
+      { $set: { status: "upcoming", reminderSentDates: [], overdueNotificationCount: 0 } },
+    );
   } catch (error) {
     throw new Error(`[calendar/bulkwrite] Failed to save deadlines: ${error instanceof Error ? error.message : String(error)}`);
   }

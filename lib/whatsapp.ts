@@ -1,4 +1,5 @@
 import { DeadlineNotificationPayload } from "@/types/notification";
+import { BatchNotificationPayload } from "@/types/notification";
 
 interface WhatsAppResponse {
   messaging_product: string;
@@ -236,6 +237,192 @@ export async function sendWhatsAppOverdueMessage(
     const errorMessage =
       error instanceof Error ? error.message : "Network/Unknown error";
     console.error("[whatsapp/overdue-exception]", errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
+function formatDeadlineList(
+  deadlines: BatchNotificationPayload["deadlines"],
+  isOverdue: boolean,
+): string {
+  return deadlines
+    .map((d, i) => {
+      const prefix = isOverdue ? "Was due" : "Due";
+      return `${i + 1}. ${d.title} — ${d.courseCode} (${d.courseTitle}) — ${prefix}: ${d.dueDate}`;
+    })
+    .join("\n");
+}
+
+export async function sendWhatsAppBatchReminder(
+  batch: BatchNotificationPayload,
+  phoneNumber: string,
+): Promise<{ success: boolean; error?: string; maskedPhone?: string }> {
+  try {
+    const {
+      WHATSAPP_PHONE_NUMBER_ID,
+      WHATSAPP_ACCESS_TOKEN,
+      DEADLINE_REMINDER_BATCH,
+    } = process.env;
+
+    if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
+      console.error("[whatsapp/error]", "Missing WhatsApp credentials in environment");
+      return { success: false, error: "WhatsApp API not configured" };
+    }
+
+    if (!DEADLINE_REMINDER_BATCH) {
+      console.error("[whatsapp/error]", "Missing DEADLINE_REMINDER_BATCH in environment");
+      return { success: false, error: "Template name not found" };
+    }
+
+    const deadlineList = formatDeadlineList(batch.deadlines, false);
+
+    const messageBody: WhatsAppMessageBody = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: phoneNumber.replace("+", ""),
+      type: "template",
+      template: {
+        name: DEADLINE_REMINDER_BATCH,
+        language: { code: "en" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: batch.userName },
+              { type: "text", text: String(batch.deadlines.length) },
+              { type: "text", text: deadlineList },
+            ],
+          },
+        ],
+      },
+    };
+
+    const response = await fetch(
+      `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messageBody),
+      },
+    );
+
+    const data = (await response.json()) as WhatsAppResponse;
+
+    if (!response.ok) {
+      const errorMsg = data.error?.message || "Unknown Meta API error";
+      console.error("[whatsapp/batch-reminder-error]", {
+        status: response.status,
+        error: errorMsg,
+        errorCode: data.error?.code,
+        errorSubcode: data.error?.error_subcode,
+        fbtrace_id: data.error?.fbtrace_id,
+        templateName: DEADLINE_REMINDER_BATCH,
+        maskedPhone: maskPhoneNumber(phoneNumber),
+      });
+      return { success: false, error: errorMsg };
+    }
+
+    console.log("[whatsapp/batch-reminder-sent]", {
+      templateName: DEADLINE_REMINDER_BATCH,
+      deadlineCount: batch.deadlines.length,
+      maskedPhone: maskPhoneNumber(phoneNumber),
+      messageId: data.messages?.[0]?.id,
+    });
+
+    return { success: true, maskedPhone: maskPhoneNumber(phoneNumber) };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Network/Unknown error";
+    console.error("[whatsapp/batch-reminder-exception]", errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
+export async function sendWhatsAppBatchOverdue(
+  batch: BatchNotificationPayload,
+  phoneNumber: string,
+): Promise<{ success: boolean; error?: string; maskedPhone?: string }> {
+  try {
+    const {
+      WHATSAPP_PHONE_NUMBER_ID,
+      WHATSAPP_ACCESS_TOKEN,
+      DEADLINE_REMINDER_OVERDUE,
+    } = process.env;
+
+    if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
+      console.error("[whatsapp/error]", "Missing WhatsApp credentials in environment");
+      return { success: false, error: "WhatsApp API not configured" };
+    }
+
+    if (!DEADLINE_REMINDER_OVERDUE) {
+      console.error("[whatsapp/error]", "Missing DEADLINE_REMINDER_OVERDUE in environment");
+      return { success: false, error: "Template name not found" };
+    }
+
+    const deadlineList = formatDeadlineList(batch.deadlines, true);
+
+    const messageBody: WhatsAppMessageBody = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: phoneNumber.replace("+", ""),
+      type: "template",
+      template: {
+        name: DEADLINE_REMINDER_OVERDUE,
+        language: { code: "en" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: batch.userName },
+              { type: "text", text: String(batch.deadlines.length) },
+              { type: "text", text: deadlineList },
+            ],
+          },
+        ],
+      },
+    };
+
+    const response = await fetch(
+      `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messageBody),
+      },
+    );
+
+    const data = (await response.json()) as WhatsAppResponse;
+
+    if (!response.ok) {
+      const errorMsg = data.error?.message || "Unknown Meta API error";
+      console.error("[whatsapp/batch-overdue-error]", {
+        status: response.status,
+        error: errorMsg,
+        errorCode: data.error?.code,
+        errorSubcode: data.error?.error_subcode,
+        fbtrace_id: data.error?.fbtrace_id,
+        templateName: DEADLINE_REMINDER_OVERDUE,
+        maskedPhone: maskPhoneNumber(phoneNumber),
+      });
+      return { success: false, error: errorMsg };
+    }
+
+    console.log("[whatsapp/batch-overdue-sent]", {
+      templateName: DEADLINE_REMINDER_OVERDUE,
+      deadlineCount: batch.deadlines.length,
+      maskedPhone: maskPhoneNumber(phoneNumber),
+      messageId: data.messages?.[0]?.id,
+    });
+
+    return { success: true, maskedPhone: maskPhoneNumber(phoneNumber) };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Network/Unknown error";
+    console.error("[whatsapp/batch-overdue-exception]", errorMessage);
     return { success: false, error: errorMessage };
   }
 }

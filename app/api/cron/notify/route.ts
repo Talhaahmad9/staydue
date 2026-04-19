@@ -2,28 +2,13 @@ import { NextResponse } from "next/server";
 import {
   getDeadlinesNeedingReminder,
   getDeadlinesNeedingOverdueNotice,
+  groupPayloadsByUser,
 } from "@/lib/notifications";
-import { sendOverdueEmail } from "@/lib/resend";
-import { DeadlineModel, UserModel, connectToDatabase } from "@/lib/mongodb";
-import { sendReminderNotifications } from "@/lib/notifications-send";
-import { sendWhatsAppOverdueMessage } from "@/lib/whatsapp";
-
-function isWhatsAppEligible(user: {
-  isPro: boolean;
-  proExpiresAt: Date | null;
-  trialStartedAt: Date | null;
-}): boolean {
-  const now = new Date();
-  if (user.isPro && user.proExpiresAt && user.proExpiresAt > now) {
-    return true;
-  }
-  if (user.trialStartedAt) {
-    const msElapsed = now.getTime() - user.trialStartedAt.getTime();
-    const daysElapsed = msElapsed / (1000 * 60 * 60 * 24);
-    if (daysElapsed <= 7) return true;
-  }
-  return false;
-}
+import { DeadlineModel, connectToDatabase } from "@/lib/mongodb";
+import {
+  sendBatchReminderNotifications,
+  sendBatchOverdueNotifications,
+} from "@/lib/notifications-send";
 
 export async function GET(request: Request): Promise<NextResponse> {
   try {
@@ -67,23 +52,24 @@ export async function GET(request: Request): Promise<NextResponse> {
       );
     }
 
-    // FIX 1B: Per-user WhatsApp deduplication across both reminder and overdue loops
-    const whatsappSentUsers = new Set<string>();
-
     let remindersSent = 0;
     let overduesSent = 0;
-    let whatsappSent = 0;
+    let whatsappReminderSent = 0;
     let whatsappOverdueSent = 0;
     let errors = 0;
 
-    // Send reminder emails + whatsapp
+    // Send batch reminder emails + WhatsApp (one per user)
     try {
       const remindersPayloads = await getDeadlinesNeedingReminder();
-      for (const payload of remindersPayloads) {
-        const result = await sendReminderNotifications(payload, whatsappSentUsers);
-        if (result.success) {
-          remindersSent++;
-          if (result.whatsappSent) whatsappSent++;
+      const batches = groupPayloadsByUser(remindersPayloads);
+
+      for (const batch of batches) {
+        const result = await sendBatchReminderNotifications(batch);
+        if (result.emailSent) {
+          remindersSent += result.claimedCount;
+          if (result.whatsappSent) whatsappReminderSent++;
+        } else if (result.claimedCount === 0) {
+          // All deadlines were already claimed — not an error
         } else {
           errors++;
         }
@@ -97,105 +83,18 @@ export async function GET(request: Request): Promise<NextResponse> {
       );
     }
 
-    // Send overdue emails
+    // Send batch overdue emails + WhatsApp (one per user)
     try {
       const overduePayloads = await getDeadlinesNeedingOverdueNotice();
-      for (const payload of overduePayloads) {
-        // FIX 1D: Atomic claim — prevents duplicate overdue sends across concurrent cron runs.
-        // DO NOT REMOVE existing post-send overdueNotificationCount update below.
-        const claimedOverdue = await DeadlineModel.findOneAndUpdate(
-          {
-            _id: payload.deadlineId,
-            isCompleted: false,
-            overdueNotificationCount: { $lt: 3 },
-          },
-          {
-            $inc: { overdueNotificationCount: 1 },
-            $set: { overdueNotifiedAt: new Date() },
-          },
-          { new: false },
-        );
+      const batches = groupPayloadsByUser(overduePayloads);
 
-        if (claimedOverdue === null) {
-          console.log("[cron/notify/overdue-skipped-duplicate]", {
-            deadlineId: payload.deadlineId,
-          });
-          continue;
-        }
-
-        const result = await sendOverdueEmail(payload);
-        if (result.success) {
-          if (claimedOverdue !== null) {
-            overduesSent++;
-          }
-
-          try {
-            const user = await UserModel.findById(payload.userId)
-              .select("phone isPro proExpiresAt trialStartedAt")
-              .lean();
-            if (!user?.phone) {
-              console.log("[cron/notify/whatsapp-overdue-skipped]", {
-                reason: "No phone number on user",
-                userId: payload.userId,
-              });
-            } else if (!isWhatsAppEligible(user)) {
-              console.log("[cron/notify/whatsapp-overdue-skipped]", {
-                reason: "User not pro or trial expired",
-                userId: payload.userId,
-              });
-            } else if (whatsappSentUsers.has(payload.userId)) {
-              console.log("[cron/notify/whatsapp-overdue-skipped]", {
-                reason: "Already sent WhatsApp to this user in current cron run",
-                userId: payload.userId,
-              });
-            } else {
-              // DB-level dedup: atomic claim prevents duplicate WhatsApp across concurrent cron instances
-              const startOfToday = new Date();
-              startOfToday.setUTCHours(0, 0, 0, 0);
-              const whatsappClaimed = await UserModel.findOneAndUpdate(
-                {
-                  _id: payload.userId,
-                  $or: [
-                    { lastWhatsappSentAt: null },
-                    { lastWhatsappSentAt: { $lt: startOfToday } },
-                  ],
-                },
-                { $set: { lastWhatsappSentAt: new Date() } },
-                { new: false },
-              );
-              if (!whatsappClaimed) {
-                console.log("[cron/notify/whatsapp-overdue-skipped]", {
-                  reason: "Already sent WhatsApp today (DB dedup)",
-                  userId: payload.userId,
-                });
-              } else {
-                const whatsappResult = await sendWhatsAppOverdueMessage(payload, user.phone);
-                if (whatsappResult.success) {
-                  whatsappOverdueSent++;
-                  whatsappSentUsers.add(payload.userId);
-                  await UserModel.updateOne(
-                    { _id: payload.userId },
-                    { $inc: { whatsappTrialUsed: 1 } }
-                  );
-                  console.log("[cron/notify/whatsapp-overdue-success]", {
-                    deadlineId: payload.deadlineId,
-                    maskedPhone: whatsappResult.maskedPhone,
-                  });
-                } else {
-                  console.warn("[cron/notify/whatsapp-overdue-failed]", {
-                    deadlineId: payload.deadlineId,
-                    error: whatsappResult.error,
-                    maskedPhone: whatsappResult.maskedPhone,
-                  });
-                }
-              }
-            }
-          } catch (whatsappError) {
-            console.error(
-              "[cron/notify/whatsapp-overdue-send]",
-              whatsappError instanceof Error ? whatsappError.message : String(whatsappError),
-            );
-          }
+      for (const batch of batches) {
+        const result = await sendBatchOverdueNotifications(batch);
+        if (result.emailSent) {
+          overduesSent += result.claimedCount;
+          if (result.whatsappSent) whatsappOverdueSent++;
+        } else if (result.claimedCount === 0) {
+          // All deadlines were already claimed — not an error
         } else {
           errors++;
         }
@@ -211,7 +110,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     console.log("[cron/notify/summary]", {
       remindersSent,
-      whatsappSent,
+      whatsappReminderSent,
       overduesSent,
       whatsappOverdueSent,
       errors,
@@ -220,7 +119,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     return NextResponse.json({
       sent: remindersSent,
-      whatsappSent,
+      whatsappSent: whatsappReminderSent,
       overdueSent: overduesSent,
       whatsappOverdueSent,
       errors,

@@ -219,6 +219,7 @@ deadlineSchema.index({ status: 1, isCompleted: 1, dueDate: 1 });
 userSchema.index({ hasCompletedOnboarding: 1 });
 userSchema.index({ passwordResetTokenExpiry: 1 }, { sparse: true });
 userSchema.index({ isPro: 1, proExpiresAt: 1 });
+userSchema.index({ lastWhatsappSentAt: 1 }, { sparse: true });
 
 const globalWithMongoose = globalThis as typeof globalThis & {
   mongooseConnection?: Promise<typeof mongoose>;

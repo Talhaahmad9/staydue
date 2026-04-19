@@ -4,9 +4,10 @@ import mongoose from "mongoose";
 
 import { connectToDatabase, UserModel, DeadlineModel } from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
-import { sendOverdueEmail } from "@/lib/resend";
-import { sendWhatsAppOverdueMessage } from "@/lib/whatsapp";
+import { sendOverdueDigestEmail } from "@/lib/resend";
+import { sendWhatsAppBatchOverdue } from "@/lib/whatsapp";
 import { getDaysDifferenceInTimezone } from "@/utils/date";
+import { BatchNotificationPayload, BatchDeadlineItem } from "@/types/notification";
 
 export async function GET(): Promise<NextResponse> {
   if (process.env.NODE_ENV === "production") {
@@ -62,9 +63,9 @@ export async function GET(): Promise<NextResponse> {
       });
     }
 
-    // Test sending overdue emails for all qualifying deadlines
-    const results = [];
     const userTimezone = user.timezone || "Asia/Karachi";
+    const qualifyingDeadlines: Array<{ item: BatchDeadlineItem; reason: string; daysSinceDue: number; notificationCount: number }> = [];
+    const skippedResults: Array<{ title: string; sent: false; skipped: true; reason: string; daysSinceDue: number; notificationCount: number }> = [];
 
     for (const deadline of overdueDeadlines) {
       const daysSinceDue = getDaysDifferenceInTimezone(now, deadline.dueDate, userTimezone);
@@ -91,12 +92,9 @@ export async function GET(): Promise<NextResponse> {
       }
 
       if (shouldSend) {
-        const payload = {
-          deadlineId: deadline._id.toString(),
-          userId: user._id.toString(),
-          userEmail: user.email,
-          userName: user.name || "Student",
-          deadline: {
+        qualifyingDeadlines.push({
+          item: {
+            deadlineId: deadline._id.toString(),
             title: deadline.title,
             courseCode: deadline.courseCode,
             courseTitle: deadline.courseTitle,
@@ -106,41 +104,13 @@ export async function GET(): Promise<NextResponse> {
               day: "numeric",
             }),
             interval: "day-of" as const,
-            allUpcoming: [],
           },
-        };
-
-        const emailResult = await sendOverdueEmail(payload);
-        results.push({
-          title: deadline.title,
-          channel: "email",
-          sent: emailResult.success,
-          error: emailResult.error,
           reason,
           daysSinceDue,
           notificationCount: count,
         });
-
-        if (user.phone) {
-          const whatsappResult = await sendWhatsAppOverdueMessage(payload, user.phone);
-          results.push({
-            title: deadline.title,
-            channel: "whatsapp",
-            sent: whatsappResult.success,
-            ...(whatsappResult.error && { error: whatsappResult.error }),
-            ...(whatsappResult.maskedPhone && { maskedPhone: whatsappResult.maskedPhone }),
-          });
-        } else {
-          results.push({
-            title: deadline.title,
-            channel: "whatsapp",
-            sent: false,
-            skipped: true,
-            reason: "No phone number",
-          });
-        }
       } else {
-        results.push({
+        skippedResults.push({
           title: deadline.title,
           sent: false,
           skipped: true,
@@ -151,20 +121,80 @@ export async function GET(): Promise<NextResponse> {
       }
     }
 
+    if (qualifyingDeadlines.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: "No overdue deadlines qualify for notification right now",
+        skipped: skippedResults,
+      });
+    }
+
+    // Build batch payload and send ONE digest email + ONE WhatsApp
+    const batch: BatchNotificationPayload = {
+      userId: user._id.toString(),
+      userEmail: user.email,
+      userName: user.name || "Student",
+      deadlines: qualifyingDeadlines.map((q) => q.item),
+    };
+
+    const emailResult = await sendOverdueDigestEmail(batch);
+
+    const results: Array<Record<string, unknown>> = [];
+
+    if (emailResult.success) {
+      results.push({
+        channel: "email",
+        sent: true,
+        deadlineCount: batch.deadlines.length,
+        deadlines: batch.deadlines.map((d) => d.title),
+      });
+    } else {
+      results.push({
+        channel: "email",
+        sent: false,
+        error: emailResult.error,
+      });
+    }
+
+    if (user.phone) {
+      const whatsappResult = await sendWhatsAppBatchOverdue(batch, user.phone);
+      results.push({
+        channel: "whatsapp",
+        sent: whatsappResult.success,
+        ...(whatsappResult.error && { error: whatsappResult.error }),
+        ...(whatsappResult.maskedPhone && { maskedPhone: whatsappResult.maskedPhone }),
+        deadlineCount: batch.deadlines.length,
+      });
+    } else {
+      results.push({
+        channel: "whatsapp",
+        sent: false,
+        skipped: true,
+        reason: "No phone number",
+      });
+    }
+
     return NextResponse.json({
       success: true,
       testResults: results,
+      qualifying: qualifyingDeadlines.map((q) => ({
+        title: q.item.title,
+        reason: q.reason,
+        daysSinceDue: q.daysSinceDue,
+        notificationCount: q.notificationCount,
+      })),
+      skipped: skippedResults,
       userTimezone,
       debugInfo: {
         now: now.toISOString(),
         totalOverdueDeadlines: overdueDeadlines.length,
-        emailsSent: results.filter((r) => r.sent).length,
+        qualifyingCount: qualifyingDeadlines.length,
       },
     });
   } catch (error) {
     console.error("[test-overdue]", error instanceof Error ? error.message : String(error));
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }

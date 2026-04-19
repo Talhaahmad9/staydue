@@ -1,5 +1,5 @@
 import { connectToDatabase, DeadlineModel, UserModel } from "@/lib/mongodb";
-import { DeadlineNotificationPayload, ReminderInterval } from "@/types/notification";
+import { DeadlineNotificationPayload, ReminderInterval, BatchNotificationPayload } from "@/types/notification";
 import { getDeadlineUrgency, getDaysDifferenceInTimezone } from "@/utils/date";
 
 // This function is the single source of truth for notification scheduling.
@@ -227,4 +227,38 @@ function getIntervalsForDeadline(dueDate: Date, reminderSentDates: Date[]): Remi
   }
 
   return intervals;
+}
+
+export function groupPayloadsByUser(
+  payloads: DeadlineNotificationPayload[],
+): BatchNotificationPayload[] {
+  const userMap = new Map<string, BatchNotificationPayload>();
+
+  for (const p of payloads) {
+    let batch = userMap.get(p.userId);
+    if (!batch) {
+      batch = {
+        userId: p.userId,
+        userEmail: p.userEmail,
+        userName: p.userName,
+        deadlines: [],
+      };
+      userMap.set(p.userId, batch);
+    }
+
+    // Avoid duplicate deadlines (same deadline may appear for multiple intervals)
+    const alreadyAdded = batch.deadlines.some((d) => d.deadlineId === p.deadlineId);
+    if (!alreadyAdded) {
+      batch.deadlines.push({
+        deadlineId: p.deadlineId,
+        title: p.deadline.title,
+        courseCode: p.deadline.courseCode,
+        courseTitle: p.deadline.courseTitle,
+        dueDate: p.deadline.dueDate,
+        interval: p.deadline.interval,
+      });
+    }
+  }
+
+  return Array.from(userMap.values());
 }

@@ -2,9 +2,11 @@ import { Resend } from "resend";
 import { render } from "@react-email/render";
 import ReminderEmail from "@/emails/ReminderEmail";
 import OverdueEmail from "@/emails/OverdueEmail";
+import ReminderDigestEmail from "@/emails/ReminderDigestEmail";
+import OverdueDigestEmail from "@/emails/OverdueDigestEmail";
 import OtpEmail from "@/emails/OtpEmail";
 import PasswordResetEmail from "@/emails/PasswordResetEmail";
-import { DeadlineNotificationPayload, ReminderInterval } from "@/types/notification";
+import { DeadlineNotificationPayload, ReminderInterval, BatchNotificationPayload } from "@/types/notification";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = "StayDue <reminders@staydue.app>";
@@ -96,6 +98,86 @@ function getSubjectLine(interval: ReminderInterval, title: string): string {
   }
 }
 
+export async function sendReminderDigestEmail(
+  payload: BatchNotificationPayload,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!payload.userEmail || !payload.userEmail.includes("@")) {
+      return { success: false, error: "Invalid email address" };
+    }
+
+    const count = payload.deadlines.length;
+    const subject = count === 1
+      ? getSubjectLine(payload.deadlines[0].interval, payload.deadlines[0].title)
+      : `You have ${count} upcoming deadlines`;
+
+    const html = await render(ReminderDigestEmail({ payload }));
+
+    const response = await resend.emails.send({
+      from: FROM,
+      to: payload.userEmail,
+      subject,
+      html,
+    });
+
+    if (response.error) {
+      console.error("[resend/reminder-digest/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    console.log("[resend/reminder-digest/sent]", {
+      userId: payload.userId,
+      deadlineCount: count,
+      messageId: response.data?.id,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/reminder-digest]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function sendOverdueDigestEmail(
+  payload: BatchNotificationPayload,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!payload.userEmail || !payload.userEmail.includes("@")) {
+      return { success: false, error: "Invalid email address" };
+    }
+
+    const count = payload.deadlines.length;
+    const subject = count === 1
+      ? `You missed a deadline: ${payload.deadlines[0].title}`
+      : `You have ${count} overdue deadlines`;
+
+    const html = await render(OverdueDigestEmail({ payload }));
+
+    const response = await resend.emails.send({
+      from: FROM,
+      to: payload.userEmail,
+      subject,
+      html,
+    });
+
+    if (response.error) {
+      console.error("[resend/overdue-digest/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    console.log("[resend/overdue-digest/sent]", {
+      userId: payload.userId,
+      deadlineCount: count,
+      messageId: response.data?.id,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/overdue-digest]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
 export async function sendOtpEmail(
   to: string,
   name: string,
@@ -158,7 +240,6 @@ export async function sendPasswordResetEmail(
     }
 
     console.log("[resend/reset/sent]", {
-      to,
       messageId: response.data?.id,
     });
 

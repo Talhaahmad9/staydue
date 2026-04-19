@@ -1,63 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRuleForPath } from "@/lib/rateLimit";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
-// In-memory store for rate limit tracking
-// Key format: "{ip}:{pathname_prefix}"
-// Value: { count: number; resetAt: number }
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
-const rateLimitStore = new Map<string, RateLimitEntry>();
-let requestCount = 0;
+const limiters: Record<string, Ratelimit> = {
+  "/api/auth/verify-email":    new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
+  "/api/auth/resend-otp":      new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   "1 h") }),
+  "/api/auth/forgot-password": new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   "1 h") }),
+  "/api/auth/reset-password":  new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   "1 h") }),
+  "/api/auth/signin":          new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
+  "/api/auth":                 new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   "1 h") }),
+  "/api/calendar/refresh":     new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(20,  "1 h") }),
+  "/api/calendar":             new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
+  "/api/settings":             new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30,  "1 h") }),
+  "/api/deadlines":            new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(60,  "1 h") }),
+  "/api/subscription":         new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10,  "1 h") }),
+  "/api/webhook":              new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(200, "1 h") }),
+};
 
-/**
- * Clean up expired entries from the rate limit store
- * Runs every 100 requests to prevent unbounded growth
- */
-function cleanupExpiredEntries(): void {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetAt < now) {
-      rateLimitStore.delete(key);
-    }
-  }
-}
+const PREFIXES = Object.keys(limiters);
 
-/**
- * Extract client IP from request
- * Tries multiple header sources for compatibility with proxies
- */
 function getClientIp(request: NextRequest): string {
-  const xForwardedFor = request.headers.get("x-forwarded-for");
-  if (xForwardedFor) {
-    return xForwardedFor.split(",")[0].trim();
-  }
-
-  const xRealIp = request.headers.get("x-real-ip");
-  if (xRealIp) {
-    return xRealIp;
-  }
-
-  return "unknown";
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0].trim();
+  return request.headers.get("x-real-ip") ?? "unknown";
 }
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // /api/cron/* excluded — protected by CRON_SECRET, not IP rate limiting
-  if (pathname.startsWith("/api/cron")) {
-    return NextResponse.next();
-  }
-
-  // Exclude NextAuth signout (no rate limit needed)
-  if (pathname === "/api/auth/signout") {
-    return NextResponse.next();
-  }
-
-  // Exclude NextAuth internal routes (not user-facing)
   if (
+    pathname.startsWith("/api/cron") ||
+    pathname === "/api/auth/signout" ||
     pathname.startsWith("/api/auth/callback") ||
     pathname.startsWith("/api/auth/session") ||
     pathname.startsWith("/api/auth/csrf") ||
@@ -67,77 +45,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if this pathname has a rate limit rule
-  const match = getRuleForPath(pathname);
-  if (!match) {
-    return NextResponse.next();
-  }
+  const matchedPrefix = PREFIXES.find((p) => pathname.startsWith(p));
+  if (!matchedPrefix) return NextResponse.next();
 
-  const { rule, prefix } = match;
+  const ip = getClientIp(request);
+  const limiter = limiters[matchedPrefix];
+  const { success, limit, remaining, reset } = await limiter.limit(ip);
 
-  // Get client IP
-  const clientIp = getClientIp(request);
+  const headers: Record<string, string> = {
+    "X-RateLimit-Limit": String(limit),
+    "X-RateLimit-Remaining": String(remaining),
+    "X-RateLimit-Reset": String(reset),
+  };
 
-  // Build rate limit key using matched prefix (not full pathname)
-  // This way all sub-paths share the same counter
-  const key = `${clientIp}:${prefix}`;
-
-  // Get or create entry
-  const now = Date.now();
-  let entry = rateLimitStore.get(key);
-
-  if (!entry || entry.resetAt < now) {
-    // Create new entry
-    entry = {
-      count: 1,
-      resetAt: now + rule.windowMs,
-    };
-    rateLimitStore.set(key, entry);
-
-    // Add rate limit headers to response
-    const response = NextResponse.next();
-    response.headers.set("X-RateLimit-Limit", String(rule.limit));
-    response.headers.set("X-RateLimit-Remaining", String(rule.limit - 1));
-    response.headers.set("X-RateLimit-Reset", String(Math.ceil(entry.resetAt / 1000)));
-
-    return response;
-  }
-
-  // Check if limit exceeded
-  if (entry.count >= rule.limit) {
-    const secondsUntilReset = Math.ceil((entry.resetAt - now) / 1000);
-
+  if (!success) {
     return NextResponse.json(
-      {
-        error: "Too many requests. Please try again later.",
-        code: "RATE_LIMITED",
-      },
+      { error: "Too many requests. Please try again later.", code: "RATE_LIMITED" },
       {
         status: 429,
-        headers: {
-          "Retry-After": String(secondsUntilReset),
-          "X-RateLimit-Limit": String(rule.limit),
-          "X-RateLimit-Remaining": "0",
-          "X-RateLimit-Reset": String(Math.ceil(entry.resetAt / 1000)),
-        },
-      }
+        headers: { ...headers, "Retry-After": String(Math.ceil((reset - Date.now()) / 1000)) },
+      },
     );
   }
 
-  // Increment count and allow through
-  entry.count += 1;
-
   const response = NextResponse.next();
-  response.headers.set("X-RateLimit-Limit", String(rule.limit));
-  response.headers.set("X-RateLimit-Remaining", String(rule.limit - entry.count));
-  response.headers.set("X-RateLimit-Reset", String(Math.ceil(entry.resetAt / 1000)));
-
-  // Run cleanup every 100 requests
-  requestCount += 1;
-  if (requestCount % 100 === 0) {
-    cleanupExpiredEntries();
-  }
-
+  Object.entries(headers).forEach(([k, v]) => response.headers.set(k, v));
   return response;
 }
 

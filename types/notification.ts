@@ -45,3 +45,19 @@ export interface DeadlineNotificationPayload {
     allUpcoming: UpcomingDeadlineSummary[];
   };
 }
+
+export interface BatchDeadlineItem {
+  deadlineId: string;
+  title: string;
+  courseCode: string;
+  courseTitle: string;
+  dueDate: string;
+  interval: ReminderInterval;
+}
+
+export interface BatchNotificationPayload {
+  userId: string;
+  userEmail: string;
+  userName: string;
+  deadlines: BatchDeadlineItem[];
+}

@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import { DeadlineModel, UserModel } from "@/lib/mongodb";
-import { sendReminderEmail } from "@/lib/resend";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import { DeadlineNotificationPayload, ReminderInterval } from "@/types/notification";
+import { sendReminderEmail, sendReminderDigestEmail, sendOverdueDigestEmail } from "@/lib/resend";
+import { sendWhatsAppMessage, sendWhatsAppBatchReminder, sendWhatsAppBatchOverdue } from "@/lib/whatsapp";
+import { DeadlineNotificationPayload, ReminderInterval, BatchNotificationPayload } from "@/types/notification";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
@@ -113,14 +113,19 @@ export async function sendReminderNotifications(
       });
     } else {
       // DB-level dedup: atomic claim prevents duplicate WhatsApp across concurrent cron instances
-      const startOfToday = new Date();
-      startOfToday.setUTCHours(0, 0, 0, 0);
+      // Use PKT midnight (UTC-5h) so "today" aligns with user's actual day
+      const startOfTodayPKT = new Date();
+      startOfTodayPKT.setUTCHours(0, 0, 0, 0);
+      startOfTodayPKT.setTime(startOfTodayPKT.getTime() - 5 * 60 * 60 * 1000);
+      if (startOfTodayPKT.getTime() > Date.now()) {
+        startOfTodayPKT.setTime(startOfTodayPKT.getTime() - 24 * 60 * 60 * 1000);
+      }
       const whatsappClaimed = await UserModel.findOneAndUpdate(
         {
           _id: payload.userId,
           $or: [
             { lastWhatsappSentAt: null },
-            { lastWhatsappSentAt: { $lt: startOfToday } },
+            { lastWhatsappSentAt: { $lt: startOfTodayPKT } },
           ],
         },
         { $set: { lastWhatsappSentAt: new Date() } },
@@ -161,6 +166,266 @@ export async function sendReminderNotifications(
   }
 
   return { success: true, whatsappSent };
+}
+
+export async function sendBatchReminderNotifications(
+  batch: BatchNotificationPayload,
+): Promise<{ emailSent: boolean; whatsappSent: boolean; claimedCount: number }> {
+  // Step 1: Atomically claim each deadline in the batch
+  const claimedDeadlineIds: string[] = [];
+  for (const dl of batch.deadlines) {
+    const cooldownMs = INTERVAL_COOLDOWN_MS[dl.interval] ?? 6 * MS_PER_HOUR;
+    const deadlineObjectId = new mongoose.Types.ObjectId(dl.deadlineId);
+    const claimed = await DeadlineModel.findOneAndUpdate(
+      {
+        _id: deadlineObjectId,
+        isCompleted: false,
+        reminderSentDates: {
+          $not: {
+            $elemMatch: {
+              $gte: new Date(Date.now() - cooldownMs),
+            },
+          },
+        },
+      },
+      {
+        $push: {
+          reminderSentDates: {
+            $each: [new Date()],
+            $slice: -10,
+          },
+        },
+      },
+      { new: false },
+    );
+    if (claimed !== null) {
+      claimedDeadlineIds.push(dl.deadlineId);
+    }
+  }
+
+  if (claimedDeadlineIds.length === 0) {
+    return { emailSent: false, whatsappSent: false, claimedCount: 0 };
+  }
+
+  // Build a filtered batch with only the claimed deadlines
+  const claimedBatch: BatchNotificationPayload = {
+    ...batch,
+    deadlines: batch.deadlines.filter((d) => claimedDeadlineIds.includes(d.deadlineId)),
+  };
+
+  // Step 2: Send ONE digest email for all claimed deadlines
+  const emailResult = await sendReminderDigestEmail(claimedBatch);
+  if (!emailResult.success) {
+    // Rollback all claims so next cron run can retry
+    for (const id of claimedDeadlineIds) {
+      await DeadlineModel.updateOne(
+        { _id: new mongoose.Types.ObjectId(id) },
+        { $pop: { reminderSentDates: 1 } },
+      );
+    }
+    console.error("[notify/batch-email-failed]", {
+      userId: batch.userId,
+      error: emailResult.error,
+    });
+    return { emailSent: false, whatsappSent: false, claimedCount: 0 };
+  }
+
+  // Step 3: Send ONE batch WhatsApp for all claimed deadlines
+  let whatsappSent = false;
+  try {
+    const user = await UserModel.findById(batch.userId)
+      .select("phone isPro proExpiresAt trialStartedAt")
+      .lean();
+
+    if (!user?.phone) {
+      console.log("[notify/batch-whatsapp-skipped]", {
+        reason: "No phone number on user",
+        userId: batch.userId,
+      });
+    } else if (!isWhatsAppEligible(user)) {
+      console.log("[notify/batch-whatsapp-skipped]", {
+        reason: "User not pro or trial expired",
+        userId: batch.userId,
+      });
+    } else {
+      // Use PKT midnight (UTC-5h) so "today" aligns with user's actual day
+      const startOfTodayPKT = new Date();
+      startOfTodayPKT.setUTCHours(0, 0, 0, 0);
+      startOfTodayPKT.setTime(startOfTodayPKT.getTime() - 5 * 60 * 60 * 1000);
+      if (startOfTodayPKT.getTime() > Date.now()) {
+        startOfTodayPKT.setTime(startOfTodayPKT.getTime() - 24 * 60 * 60 * 1000);
+      }
+      const whatsappClaimed = await UserModel.findOneAndUpdate(
+        {
+          _id: batch.userId,
+          $or: [
+            { lastWhatsappSentAt: null },
+            { lastWhatsappSentAt: { $lt: startOfTodayPKT } },
+          ],
+        },
+        { $set: { lastWhatsappSentAt: new Date() } },
+        { new: false },
+      );
+      if (!whatsappClaimed) {
+        console.log("[notify/batch-whatsapp-skipped]", {
+          reason: "Already sent WhatsApp today (DB dedup)",
+          userId: batch.userId,
+        });
+      } else {
+        const whatsappResult = await sendWhatsAppBatchReminder(claimedBatch, user.phone);
+        whatsappSent = whatsappResult.success;
+        if (whatsappSent) {
+          await UserModel.updateOne(
+            { _id: batch.userId },
+            { $inc: { whatsappTrialUsed: 1 } },
+          );
+          console.log("[notify/batch-whatsapp-success]", {
+            userId: batch.userId,
+            deadlineCount: claimedBatch.deadlines.length,
+            maskedPhone: whatsappResult.maskedPhone,
+          });
+        } else {
+          console.warn("[notify/batch-whatsapp-failed]", {
+            userId: batch.userId,
+            error: whatsappResult.error,
+            maskedPhone: whatsappResult.maskedPhone,
+          });
+        }
+      }
+    }
+  } catch (whatsappError) {
+    console.error(
+      "[notify/batch-whatsapp-send]",
+      whatsappError instanceof Error ? whatsappError.message : String(whatsappError),
+    );
+  }
+
+  return { emailSent: true, whatsappSent, claimedCount: claimedDeadlineIds.length };
+}
+
+export async function sendBatchOverdueNotifications(
+  batch: BatchNotificationPayload,
+): Promise<{ emailSent: boolean; whatsappSent: boolean; claimedCount: number }> {
+  // Step 1: Atomically claim each overdue deadline in the batch
+  const claimedDeadlineIds: string[] = [];
+  for (const dl of batch.deadlines) {
+    const claimed = await DeadlineModel.findOneAndUpdate(
+      {
+        _id: dl.deadlineId,
+        isCompleted: false,
+        overdueNotificationCount: { $lt: 3 },
+      },
+      {
+        $inc: { overdueNotificationCount: 1 },
+        $set: { overdueNotifiedAt: new Date() },
+      },
+      { new: false },
+    );
+    if (claimed !== null) {
+      claimedDeadlineIds.push(dl.deadlineId);
+    }
+  }
+
+  if (claimedDeadlineIds.length === 0) {
+    return { emailSent: false, whatsappSent: false, claimedCount: 0 };
+  }
+
+  // Build a filtered batch with only the claimed deadlines
+  const claimedBatch: BatchNotificationPayload = {
+    ...batch,
+    deadlines: batch.deadlines.filter((d) => claimedDeadlineIds.includes(d.deadlineId)),
+  };
+
+  // Step 2: Send ONE digest overdue email
+  const emailResult = await sendOverdueDigestEmail(claimedBatch);
+  if (!emailResult.success) {
+    // Rollback all claims
+    for (const id of claimedDeadlineIds) {
+      await DeadlineModel.updateOne(
+        { _id: id },
+        {
+          $inc: { overdueNotificationCount: -1 },
+        },
+      );
+    }
+    console.error("[notify/batch-overdue-email-failed]", {
+      userId: batch.userId,
+      error: emailResult.error,
+    });
+    return { emailSent: false, whatsappSent: false, claimedCount: 0 };
+  }
+
+  // Step 3: Send ONE batch overdue WhatsApp
+  let whatsappSent = false;
+  try {
+    const user = await UserModel.findById(batch.userId)
+      .select("phone isPro proExpiresAt trialStartedAt")
+      .lean();
+
+    if (!user?.phone) {
+      console.log("[notify/batch-overdue-whatsapp-skipped]", {
+        reason: "No phone number on user",
+        userId: batch.userId,
+      });
+    } else if (!isWhatsAppEligible(user)) {
+      console.log("[notify/batch-overdue-whatsapp-skipped]", {
+        reason: "User not pro or trial expired",
+        userId: batch.userId,
+      });
+    } else {
+      // Use PKT midnight (UTC-5h) so "today" aligns with user's actual day
+      const startOfTodayPKT = new Date();
+      startOfTodayPKT.setUTCHours(0, 0, 0, 0);
+      startOfTodayPKT.setTime(startOfTodayPKT.getTime() - 5 * 60 * 60 * 1000);
+      if (startOfTodayPKT.getTime() > Date.now()) {
+        startOfTodayPKT.setTime(startOfTodayPKT.getTime() - 24 * 60 * 60 * 1000);
+      }
+      const whatsappClaimed = await UserModel.findOneAndUpdate(
+        {
+          _id: batch.userId,
+          $or: [
+            { lastWhatsappSentAt: null },
+            { lastWhatsappSentAt: { $lt: startOfTodayPKT } },
+          ],
+        },
+        { $set: { lastWhatsappSentAt: new Date() } },
+        { new: false },
+      );
+      if (!whatsappClaimed) {
+        console.log("[notify/batch-overdue-whatsapp-skipped]", {
+          reason: "Already sent WhatsApp today (DB dedup)",
+          userId: batch.userId,
+        });
+      } else {
+        const whatsappResult = await sendWhatsAppBatchOverdue(claimedBatch, user.phone);
+        whatsappSent = whatsappResult.success;
+        if (whatsappSent) {
+          await UserModel.updateOne(
+            { _id: batch.userId },
+            { $inc: { whatsappTrialUsed: 1 } },
+          );
+          console.log("[notify/batch-overdue-whatsapp-success]", {
+            userId: batch.userId,
+            deadlineCount: claimedBatch.deadlines.length,
+            maskedPhone: whatsappResult.maskedPhone,
+          });
+        } else {
+          console.warn("[notify/batch-overdue-whatsapp-failed]", {
+            userId: batch.userId,
+            error: whatsappResult.error,
+            maskedPhone: whatsappResult.maskedPhone,
+          });
+        }
+      }
+    }
+  } catch (whatsappError) {
+    console.error(
+      "[notify/batch-overdue-whatsapp-send]",
+      whatsappError instanceof Error ? whatsappError.message : String(whatsappError),
+    );
+  }
+
+  return { emailSent: true, whatsappSent, claimedCount: claimedDeadlineIds.length };
 }
 
 export async function buildTestNotificationPayload(
