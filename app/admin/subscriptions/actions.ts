@@ -5,6 +5,7 @@ import { getToken } from "next-auth/jwt";
 import { headers } from "next/headers";
 import { connectToDatabase, SubscriptionModel, UserModel } from "@/lib/mongodb";
 import { getScreenshotUrl, deleteScreenshot } from "@/lib/r2";
+import { sendProActivatedEmail } from "@/lib/resend";
 import mongoose from "mongoose";
 
 async function getAdminEmail(): Promise<string> {
@@ -67,6 +68,23 @@ export async function approveSubscription(
       { _id: sub.userId },
       { $set: { isPro: true, proExpiresAt: endDate } }
     );
+
+    // Fire-and-forget activation email — never throws
+    UserModel.findById(sub.userId)
+      .select("name email")
+      .lean()
+      .then((u) => {
+        const user = u as { name?: string; email?: string } | null;
+        if (user?.email) {
+          return sendProActivatedEmail(
+            user.email,
+            user.name ?? "there",
+            sub.plan as "monthly" | "semester",
+            endDate
+          );
+        }
+      })
+      .catch((e: unknown) => console.error("[admin/approve/pro-email]", e));
 
     revalidatePath("/admin/subscriptions");
     revalidatePath("/admin");

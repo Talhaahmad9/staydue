@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase, SubscriptionModel, DiscountCodeModel } from "@/lib/mongodb";
+import { connectToDatabase, SubscriptionModel, DiscountCodeModel, UserModel } from "@/lib/mongodb";
+import { sendNewPaymentAlertEmail } from "@/lib/resend";
 import { uploadScreenshot } from "@/lib/r2";
 import { z } from "zod";
 
@@ -124,6 +125,20 @@ export async function POST(req: Request): Promise<NextResponse> {
       reviewedBy: null,
       rejectionReason: null,
     });
+
+    // Fire-and-forget admin alert — never throws
+    const adminEmail = (process.env.ADMIN_EMAILS ?? "").split(",")[0].trim();
+    if (adminEmail) {
+      UserModel.findById(session.user.id)
+        .select("name email")
+        .lean()
+        .then((u) => {
+          const name = (u as { name?: string } | null)?.name ?? "Unknown";
+          const email = (u as { email?: string } | null)?.email ?? "";
+          return sendNewPaymentAlertEmail(adminEmail, name, email, result.data.plan, finalAmount, result.data.transactionId);
+        })
+        .catch((e: unknown) => console.error("[subscription/submit/alert-email]", e));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

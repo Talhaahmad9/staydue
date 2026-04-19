@@ -6,6 +6,8 @@ import ReminderDigestEmail from "@/emails/ReminderDigestEmail";
 import OverdueDigestEmail from "@/emails/OverdueDigestEmail";
 import OtpEmail from "@/emails/OtpEmail";
 import PasswordResetEmail from "@/emails/PasswordResetEmail";
+import ProActivatedEmail from "@/emails/ProActivatedEmail";
+import NewPaymentAlertEmail from "@/emails/NewPaymentAlertEmail";
 import { DeadlineNotificationPayload, ReminderInterval, BatchNotificationPayload } from "@/types/notification";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -246,6 +248,72 @@ export async function sendPasswordResetEmail(
     return { success: true };
   } catch (error) {
     console.error("[resend/reset]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function sendProActivatedEmail(
+  to: string,
+  userName: string,
+  plan: "monthly" | "semester",
+  endDate: Date
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!to || !to.includes("@")) {
+      return { success: false, error: "Invalid email address" };
+    }
+
+    const html = await render(ProActivatedEmail({ userName, plan, endDate }));
+
+    const response = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Your StayDue Pro is now active",
+      html,
+    });
+
+    if (response.error) {
+      console.error("[resend/pro-activated/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/pro-activated]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function sendNewPaymentAlertEmail(
+  adminEmail: string,
+  userName: string,
+  userEmail: string,
+  plan: "monthly" | "semester",
+  amount: number,
+  transactionId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!adminEmail || !adminEmail.includes("@")) {
+      return { success: false, error: "Invalid admin email address" };
+    }
+
+    const html = await render(NewPaymentAlertEmail({ userName, userEmail, plan, amount, transactionId }));
+
+    const response = await resend.emails.send({
+      from: FROM,
+      to: adminEmail,
+      subject: `New payment to review — ${userName}`,
+      html,
+    });
+
+    if (response.error) {
+      console.error("[resend/payment-alert/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/payment-alert]", error instanceof Error ? error.message : String(error));
     return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
