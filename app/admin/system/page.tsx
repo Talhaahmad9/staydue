@@ -1,4 +1,4 @@
-import { getAdminSystemHealth } from "@/lib/admin";
+import { getAdminSystemHealth, getAdminCronLogs } from "@/lib/admin";
 import StatCard from "@/components/admin/StatCard";
 
 const CRON_JOBS = [
@@ -7,7 +7,10 @@ const CRON_JOBS = [
 ];
 
 export default async function AdminSystemPage() {
-  const health = await getAdminSystemHealth();
+  const [health, cronLogs] = await Promise.all([
+    getAdminSystemHealth(),
+    getAdminCronLogs(20),
+  ]);
 
   const totalDeadlines =
     health.deadlineStatusCounts.upcoming +
@@ -104,6 +107,47 @@ export default async function AdminSystemPage() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* Cron Run History */}
+      <section className="space-y-2">
+        <p className="text-xs font-medium text-text-muted uppercase tracking-wider">Notify cron — last 20 runs</p>
+        {cronLogs.length === 0 ? (
+          <div className="bg-page-surface border border-line rounded-xl px-4 py-6 text-center text-sm text-text-muted">
+            No cron runs recorded yet. Logs appear after the next cron execution.
+          </div>
+        ) : (
+          <div className="bg-page-surface border border-line rounded-xl overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
+              <thead>
+                <tr className="border-b border-line">
+                  <th className="text-left text-text-muted font-medium text-xs px-4 py-3">Run at (PKT)</th>
+                  <th className="text-left text-text-muted font-medium text-xs px-4 py-3">Reminders</th>
+                  <th className="text-left text-text-muted font-medium text-xs px-4 py-3">Overdue</th>
+                  <th className="text-left text-text-muted font-medium text-xs px-4 py-3">WhatsApp</th>
+                  <th className="text-left text-text-muted font-medium text-xs px-4 py-3">Errors</th>
+                  <th className="text-left text-text-muted font-medium text-xs px-4 py-3">Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cronLogs.map((run, i) => (
+                  <tr key={run.id} className={i < cronLogs.length - 1 ? "border-b border-line" : ""}>
+                    <td className="px-4 py-3 text-text-secondary text-xs">
+                      {run.runAt.toLocaleString("en-PK", { timeZone: "Asia/Karachi", dateStyle: "medium", timeStyle: "short" })}
+                    </td>
+                    <td className="px-4 py-3 text-text-primary">{run.remindersSent}</td>
+                    <td className="px-4 py-3 text-text-primary">{run.overduesSent}</td>
+                    <td className="px-4 py-3 text-text-primary">{run.whatsappReminderSent + run.whatsappOverdueSent}</td>
+                    <td className={`px-4 py-3 font-medium ${run.errors > 0 ? "text-red-400" : "text-text-muted"}`}>
+                      {run.errors}
+                    </td>
+                    <td className="px-4 py-3 text-text-muted text-xs">{run.durationMs}ms</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

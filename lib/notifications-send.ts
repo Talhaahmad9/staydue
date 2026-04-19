@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { DeadlineModel, UserModel } from "@/lib/mongodb";
+import { DeadlineModel, UserModel, NotificationLogModel } from "@/lib/mongodb";
 import { sendReminderEmail, sendReminderDigestEmail, sendOverdueDigestEmail } from "@/lib/resend";
 import { sendWhatsAppMessage, sendWhatsAppBatchReminder, sendWhatsAppBatchOverdue } from "@/lib/whatsapp";
 import { DeadlineNotificationPayload, ReminderInterval, BatchNotificationPayload } from "@/types/notification";
@@ -227,8 +227,31 @@ export async function sendBatchReminderNotifications(
       userId: batch.userId,
       error: emailResult.error,
     });
+    try {
+      await NotificationLogModel.create({
+        userId: batch.userId,
+        deadlineIds: claimedDeadlineIds.map((id) => new mongoose.Types.ObjectId(id)),
+        channel: "email",
+        type: "reminder",
+        status: "failed",
+        error: String(emailResult.error ?? "unknown"),
+        sentAt: new Date(),
+      });
+    } catch { /* log write failure must never affect notification flow */ }
     return { emailSent: false, whatsappSent: false, claimedCount: 0 };
   }
+
+  // Log successful email send
+  try {
+    await NotificationLogModel.create({
+      userId: batch.userId,
+      deadlineIds: claimedBatch.deadlines.map((d) => new mongoose.Types.ObjectId(d.deadlineId)),
+      channel: "email",
+      type: "reminder",
+      status: "sent",
+      sentAt: new Date(),
+    });
+  } catch { /* log write failure must never affect notification flow */ }
 
   // Step 3: Send ONE batch WhatsApp for all claimed deadlines
   let whatsappSent = false;
@@ -284,12 +307,33 @@ export async function sendBatchReminderNotifications(
             deadlineCount: claimedBatch.deadlines.length,
             maskedPhone: whatsappResult.maskedPhone,
           });
+          try {
+            await NotificationLogModel.create({
+              userId: batch.userId,
+              deadlineIds: claimedBatch.deadlines.map((d) => new mongoose.Types.ObjectId(d.deadlineId)),
+              channel: "whatsapp",
+              type: "reminder",
+              status: "sent",
+              sentAt: new Date(),
+            });
+          } catch { /* log write failure must never affect notification flow */ }
         } else {
           console.warn("[notify/batch-whatsapp-failed]", {
             userId: batch.userId,
             error: whatsappResult.error,
             maskedPhone: whatsappResult.maskedPhone,
           });
+          try {
+            await NotificationLogModel.create({
+              userId: batch.userId,
+              deadlineIds: claimedBatch.deadlines.map((d) => new mongoose.Types.ObjectId(d.deadlineId)),
+              channel: "whatsapp",
+              type: "reminder",
+              status: "failed",
+              error: String(whatsappResult.error ?? "unknown"),
+              sentAt: new Date(),
+            });
+          } catch { /* log write failure must never affect notification flow */ }
         }
       }
     }
@@ -352,8 +396,31 @@ export async function sendBatchOverdueNotifications(
       userId: batch.userId,
       error: emailResult.error,
     });
+    try {
+      await NotificationLogModel.create({
+        userId: batch.userId,
+        deadlineIds: claimedDeadlineIds.map((id) => new mongoose.Types.ObjectId(id)),
+        channel: "email",
+        type: "overdue",
+        status: "failed",
+        error: String(emailResult.error ?? "unknown"),
+        sentAt: new Date(),
+      });
+    } catch { /* log write failure must never affect notification flow */ }
     return { emailSent: false, whatsappSent: false, claimedCount: 0 };
   }
+
+  // Log successful overdue email send
+  try {
+    await NotificationLogModel.create({
+      userId: batch.userId,
+      deadlineIds: claimedBatch.deadlines.map((d) => new mongoose.Types.ObjectId(d.deadlineId)),
+      channel: "email",
+      type: "overdue",
+      status: "sent",
+      sentAt: new Date(),
+    });
+  } catch { /* log write failure must never affect notification flow */ }
 
   // Step 3: Send ONE batch overdue WhatsApp
   let whatsappSent = false;
@@ -409,12 +476,33 @@ export async function sendBatchOverdueNotifications(
             deadlineCount: claimedBatch.deadlines.length,
             maskedPhone: whatsappResult.maskedPhone,
           });
+          try {
+            await NotificationLogModel.create({
+              userId: batch.userId,
+              deadlineIds: claimedBatch.deadlines.map((d) => new mongoose.Types.ObjectId(d.deadlineId)),
+              channel: "whatsapp",
+              type: "overdue",
+              status: "sent",
+              sentAt: new Date(),
+            });
+          } catch { /* log write failure must never affect notification flow */ }
         } else {
           console.warn("[notify/batch-overdue-whatsapp-failed]", {
             userId: batch.userId,
             error: whatsappResult.error,
             maskedPhone: whatsappResult.maskedPhone,
           });
+          try {
+            await NotificationLogModel.create({
+              userId: batch.userId,
+              deadlineIds: claimedBatch.deadlines.map((d) => new mongoose.Types.ObjectId(d.deadlineId)),
+              channel: "whatsapp",
+              type: "overdue",
+              status: "failed",
+              error: String(whatsappResult.error ?? "unknown"),
+              sentAt: new Date(),
+            });
+          } catch { /* log write failure must never affect notification flow */ }
         }
       }
     }

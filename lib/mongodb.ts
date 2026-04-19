@@ -253,4 +253,71 @@ export const SubscriptionModel: Model<SubscriptionDocument> =
 export const DiscountCodeModel: Model<DiscountCodeDocument> =
   mongoose.models.DiscountCode || mongoose.model<DiscountCodeDocument>("DiscountCode", discountCodeSchema);
 
-export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry, NotificationPreferences, SubscriptionDocument, DiscountCodeDocument };
+// ---------------------------------------------------------------------------
+// NotificationLog — one record per send attempt (email or WhatsApp)
+// TTL: auto-deleted after 90 days via the sentAt index
+// ---------------------------------------------------------------------------
+interface NotificationLogDocument {
+  userId: mongoose.Types.ObjectId;
+  deadlineIds: mongoose.Types.ObjectId[];
+  channel: "email" | "whatsapp";
+  type: "reminder" | "overdue";
+  status: "sent" | "failed";
+  error?: string;
+  sentAt: Date;
+  createdAt: Date;
+}
+
+const notificationLogSchema = new Schema<NotificationLogDocument>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    deadlineIds: [{ type: Schema.Types.ObjectId, ref: "Deadline" }],
+    channel: { type: String, enum: ["email", "whatsapp"], required: true },
+    type: { type: String, enum: ["reminder", "overdue"], required: true },
+    status: { type: String, enum: ["sent", "failed"], required: true },
+    error: { type: String },
+    sentAt: { type: Date, required: true, index: { expireAfterSeconds: 90 * 24 * 60 * 60 } },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } }
+);
+
+notificationLogSchema.index({ userId: 1, sentAt: -1 });
+notificationLogSchema.index({ sentAt: -1 });
+
+// ---------------------------------------------------------------------------
+// CronRunLog — one record per cron execution
+// TTL: auto-deleted after 60 days
+// ---------------------------------------------------------------------------
+interface CronRunLogDocument {
+  runAt: Date;
+  remindersSent: number;
+  overduesSent: number;
+  whatsappReminderSent: number;
+  whatsappOverdueSent: number;
+  errors: number;
+  durationMs: number;
+  createdAt: Date;
+}
+
+const cronRunLogSchema = new Schema<CronRunLogDocument>(
+  {
+    runAt: { type: Date, required: true, index: { expireAfterSeconds: 60 * 24 * 60 * 60 } },
+    remindersSent: { type: Number, required: true, default: 0 },
+    overduesSent: { type: Number, required: true, default: 0 },
+    whatsappReminderSent: { type: Number, required: true, default: 0 },
+    whatsappOverdueSent: { type: Number, required: true, default: 0 },
+    errors: { type: Number, required: true, default: 0 },
+    durationMs: { type: Number, required: true, default: 0 },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } }
+);
+
+export const NotificationLogModel: Model<NotificationLogDocument> =
+  mongoose.models.NotificationLog ||
+  mongoose.model<NotificationLogDocument>("NotificationLog", notificationLogSchema);
+
+export const CronRunLogModel: Model<CronRunLogDocument> =
+  mongoose.models.CronRunLog ||
+  mongoose.model<CronRunLogDocument>("CronRunLog", cronRunLogSchema);
+
+export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry, NotificationPreferences, SubscriptionDocument, DiscountCodeDocument, NotificationLogDocument, CronRunLogDocument };

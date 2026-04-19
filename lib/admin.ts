@@ -1,4 +1,4 @@
-import { connectToDatabase, UserModel, SubscriptionModel, DeadlineModel, DiscountCodeModel } from "@/lib/mongodb";
+import { connectToDatabase, UserModel, SubscriptionModel, DeadlineModel, DiscountCodeModel, NotificationLogModel, CronRunLogModel } from "@/lib/mongodb";
 
 export interface AdminOverviewStats {
   totalUsers: number;
@@ -475,6 +475,9 @@ export interface AdminNotificationStats {
   totalReminderSends: number;
   reminderSendsLast7Days: number;
   totalOverdueSends: number;
+  totalEmailSends: number;
+  totalWhatsappSends: number;
+  totalFailures: number;
   usersWithEmailDisabled: number;
   usersWithPhone: number;
   totalWhatsappTrialUsed: number;
@@ -489,42 +492,33 @@ export async function getAdminNotificationStats(): Promise<AdminNotificationStat
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const [
-    reminderTotals,
-    recentReminderCount,
-    overdueAgg,
+    totalReminderSends,
+    reminderSendsLast7Days,
+    totalOverdueSends,
+    totalEmailSends,
+    totalWhatsappSends,
+    totalFailures,
     emailDisabledCount,
     phoneCount,
     whatsappAgg,
     sendsByDayAgg,
   ] = await Promise.all([
-    // Total reminder sends = sum of array lengths
-    DeadlineModel.aggregate([
-      { $project: { count: { $size: "$reminderSentDates" } } },
-      { $group: { _id: null, total: { $sum: "$count" } } },
-    ]),
-    // Reminders sent in the last 7 days
-    DeadlineModel.aggregate([
-      { $project: { recent: { $filter: { input: "$reminderSentDates", as: "d", cond: { $gte: ["$$d", sevenDaysAgo] } } } } },
-      { $project: { count: { $size: "$recent" } } },
-      { $group: { _id: null, total: { $sum: "$count" } } },
-    ]),
-    // Total overdue notifications
-    DeadlineModel.aggregate([
-      { $group: { _id: null, total: { $sum: "$overdueNotificationCount" } } },
-    ]),
+    NotificationLogModel.countDocuments({ type: "reminder", status: "sent" }),
+    NotificationLogModel.countDocuments({ type: "reminder", status: "sent", sentAt: { $gte: sevenDaysAgo } }),
+    NotificationLogModel.countDocuments({ type: "overdue", status: "sent" }),
+    NotificationLogModel.countDocuments({ channel: "email", status: "sent" }),
+    NotificationLogModel.countDocuments({ channel: "whatsapp", status: "sent" }),
+    NotificationLogModel.countDocuments({ status: "failed" }),
     UserModel.countDocuments({ "notificationPreferences.emailEnabled": false }),
     UserModel.countDocuments({ phone: { $ne: null, $exists: true } }),
-    // Sum of whatsapp trial messages used
     UserModel.aggregate([
       { $group: { _id: null, total: { $sum: "$whatsappTrialUsed" } } },
     ]),
-    // Sends per day over last 30 days
-    DeadlineModel.aggregate([
-      { $unwind: "$reminderSentDates" },
-      { $match: { reminderSentDates: { $gte: thirtyDaysAgo } } },
+    NotificationLogModel.aggregate([
+      { $match: { status: "sent", sentAt: { $gte: thirtyDaysAgo } } },
       {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$reminderSentDates", timezone: "Asia/Karachi" } },
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$sentAt", timezone: "Asia/Karachi" } },
           count: { $sum: 1 },
         },
       },
@@ -544,14 +538,43 @@ export async function getAdminNotificationStats(): Promise<AdminNotificationStat
   }
 
   return {
-    totalReminderSends: reminderTotals[0]?.total ?? 0,
-    reminderSendsLast7Days: recentReminderCount[0]?.total ?? 0,
-    totalOverdueSends: overdueAgg[0]?.total ?? 0,
+    totalReminderSends,
+    reminderSendsLast7Days,
+    totalOverdueSends,
+    totalEmailSends,
+    totalWhatsappSends,
+    totalFailures,
     usersWithEmailDisabled: emailDisabledCount,
     usersWithPhone: phoneCount,
     totalWhatsappTrialUsed: whatsappAgg[0]?.total ?? 0,
     sendsByDay,
   };
+}
+
+export interface AdminCronRun {
+  id: string;
+  runAt: Date;
+  remindersSent: number;
+  overduesSent: number;
+  whatsappReminderSent: number;
+  whatsappOverdueSent: number;
+  errors: number;
+  durationMs: number;
+}
+
+export async function getAdminCronLogs(limit = 20): Promise<AdminCronRun[]> {
+  await connectToDatabase();
+  const runs = await CronRunLogModel.find().sort({ runAt: -1 }).limit(limit).lean();
+  return runs.map((r) => ({
+    id: r._id.toString(),
+    runAt: r.runAt,
+    remindersSent: r.remindersSent,
+    overduesSent: r.overduesSent,
+    whatsappReminderSent: r.whatsappReminderSent,
+    whatsappOverdueSent: r.whatsappOverdueSent,
+    errors: r.errors,
+    durationMs: r.durationMs,
+  }));
 }
 
 export interface AdminSystemHealth {

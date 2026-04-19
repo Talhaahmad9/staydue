@@ -4,7 +4,7 @@ import {
   getDeadlinesNeedingOverdueNotice,
   groupPayloadsByUser,
 } from "@/lib/notifications";
-import { DeadlineModel, connectToDatabase } from "@/lib/mongodb";
+import { DeadlineModel, connectToDatabase, CronRunLogModel } from "@/lib/mongodb";
 import {
   sendBatchReminderNotifications,
   sendBatchOverdueNotifications,
@@ -28,7 +28,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     await connectToDatabase();
 
-    // Update all upcoming deadlines that have passed to overdue status
+    const cronStartTime = Date.now();
     try {
       const now = new Date();
       const result = await DeadlineModel.updateMany(
@@ -116,6 +116,19 @@ export async function GET(request: Request): Promise<NextResponse> {
       errors,
       timestamp: new Date().toISOString(),
     });
+
+    // Write cron run log (fire-and-forget, never throws)
+    try {
+      await CronRunLogModel.create({
+        runAt: new Date(),
+        remindersSent,
+        overduesSent,
+        whatsappReminderSent,
+        whatsappOverdueSent,
+        errors,
+        durationMs: Date.now() - cronStartTime,
+      });
+    } catch { /* log write failure must never affect cron response */ }
 
     return NextResponse.json({
       sent: remindersSent,
