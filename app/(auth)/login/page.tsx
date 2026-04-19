@@ -14,7 +14,11 @@ export default async function LoginPage({
 }: LoginPageProps): Promise<React.ReactElement> {
   const session = await auth();
   if (session?.user?.id) {
-    redirect("/onboarding");
+    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean);
+    redirect(session.user.email && adminEmails.includes(session.user.email) ? "/admin" : "/onboarding");
   }
 
   const params = await searchParams;

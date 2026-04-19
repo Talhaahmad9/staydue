@@ -12,6 +12,15 @@ export default async function OnboardingPage(): Promise<React.ReactElement> {
     redirect("/login");
   }
 
+  // Admin accounts skip onboarding entirely
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  if (session.user.email && adminEmails.includes(session.user.email)) {
+    redirect("/admin");
+  }
+
   // Check if user is verified
   if (session.user.isVerified === false) {
     redirect(`/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`);
