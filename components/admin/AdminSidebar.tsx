@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   CreditCard,
@@ -10,6 +11,7 @@ import {
   Tag,
   Bell,
   Activity,
+  LogOut,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -57,12 +59,13 @@ export default function AdminSidebar({ pendingCount }: { pendingCount: number })
       </nav>
 
       <div className="px-4 py-4 border-t border-line">
-        <Link
-          href="/dashboard"
-          className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="flex items-center gap-2 text-xs text-text-muted hover:text-red-400 transition-colors"
         >
-          Back to app
-        </Link>
+          <LogOut className="w-3.5 h-3.5" />
+          Sign out
+        </button>
       </div>
     </aside>
   );

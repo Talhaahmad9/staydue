@@ -13,8 +13,10 @@ import {
   Activity,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { signOut } from "next-auth/react";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -103,9 +105,13 @@ export default function AdminMobileNav({ pendingCount }: { pendingCount: number 
                 })}
               </div>
               <div className="px-4 py-4 border-t border-line">
-                <Link href="/dashboard" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
-                  Back to app
-                </Link>
+                <button
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="flex items-center gap-2 text-xs text-text-muted hover:text-red-400 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign out
+                </button>
               </div>
             </motion.nav>
           </>
