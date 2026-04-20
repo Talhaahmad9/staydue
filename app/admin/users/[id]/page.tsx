@@ -84,17 +84,39 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
       </section>
 
       {/* Pro control */}
-      <UserProControl userId={user.id} isPro={user.isPro} />
+      <UserProControl userId={user.id} isPro={user.isPro} hasTrial={!!user.trialStartedAt} />
 
-      {/* Pro expiry info */}
-      {user.isPro && (
-        <div className="flex gap-4 text-sm">
-          <div>
-            <p className="text-xs text-text-muted mb-0.5">Pro expires</p>
-            <p className="text-text-primary">{formatDate(user.proExpiresAt)}</p>
-          </div>
-        </div>
-      )}
+      {/* Access status dates */}
+      {(user.isPro || user.trialStartedAt) && (() => {
+        const activeSub = user.subscriptions.find((s) => s.status === "active");
+        const trialExpiresAt = user.trialStartedAt
+          ? new Date(new Date(user.trialStartedAt).getTime() + 7 * 24 * 60 * 60 * 1000)
+          : null;
+        return (
+          <section className="bg-page-surface border border-line rounded-xl p-4 space-y-3">
+            <p className="text-sm font-medium text-text-primary">
+              {user.isPro ? "Pro access dates" : "Trial access dates"}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {user.isPro && (
+                <>
+                  <InfoRow
+                    label="Pro started"
+                    value={activeSub?.startDate ? formatDate(activeSub.startDate) : "Manually granted"}
+                  />
+                  <InfoRow label="Pro expires" value={formatDate(user.proExpiresAt)} />
+                </>
+              )}
+              {!user.isPro && user.trialStartedAt && (
+                <>
+                  <InfoRow label="Trial started" value={formatDate(user.trialStartedAt)} />
+                  <InfoRow label="Trial expires" value={formatDate(trialExpiresAt)} />
+                </>
+              )}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Subscription history */}
       {user.subscriptions.length > 0 && (

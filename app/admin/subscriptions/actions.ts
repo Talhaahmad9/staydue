@@ -135,6 +135,54 @@ export async function rejectSubscription(
   }
 }
 
+export async function revokeSubscription(
+  subscriptionId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await connectToDatabase();
+
+    const sub = await SubscriptionModel.findById(subscriptionId).lean();
+    if (!sub) return { success: false, error: "Subscription not found" };
+    if (sub.status !== "active") return { success: false, error: "Subscription is not active" };
+
+    const adminEmail = await getAdminEmail();
+    const now = new Date();
+
+    await SubscriptionModel.updateOne(
+      { _id: new mongoose.Types.ObjectId(subscriptionId) },
+      {
+        $set: {
+          status: "expired",
+          reviewedAt: now,
+          reviewedBy: adminEmail,
+        },
+      }
+    );
+
+    // If no other active subscriptions remain, revoke Pro status
+    const otherActive = await SubscriptionModel.countDocuments({
+      userId: sub.userId,
+      status: "active",
+      _id: { $ne: new mongoose.Types.ObjectId(subscriptionId) },
+    });
+
+    if (otherActive === 0) {
+      await UserModel.updateOne(
+        { _id: sub.userId },
+        { $set: { isPro: false, proExpiresAt: null } }
+      );
+    }
+
+    revalidatePath("/admin/subscriptions");
+    revalidatePath("/admin/users");
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("[admin/revoke-subscription]", error);
+    return { success: false, error: "Failed to revoke subscription" };
+  }
+}
+
 export async function getSubscriptionScreenshotUrl(
   screenshotKey: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {

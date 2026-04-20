@@ -33,6 +33,27 @@ export async function grantPro(
   }
 }
 
+export async function revokeTrial(
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await connectToDatabase();
+
+    await UserModel.updateOne(
+      { _id: new mongoose.Types.ObjectId(userId) },
+      { $set: { trialStartedAt: null, trialPhoneNumber: null, whatsappTrialUsed: 0 } }
+    );
+
+    revalidatePath(`/admin/users/${userId}`);
+    revalidatePath("/admin/users");
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("[admin/revoke-trial]", error);
+    return { success: false, error: "Failed to revoke trial" };
+  }
+}
+
 export async function revokePro(
   userId: string
 ): Promise<{ success: boolean; error?: string }> {

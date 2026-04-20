@@ -2,16 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
-import { grantPro, revokePro } from "@/app/admin/users/actions";
+import { grantPro, revokePro, revokeTrial } from "@/app/admin/users/actions";
 
 interface Props {
   userId: string;
   isPro: boolean;
+  hasTrial: boolean;
 }
 
-export default function UserProControl({ userId, isPro }: Props) {
+export default function UserProControl({ userId, isPro, hasTrial }: Props) {
   const [plan, setPlan] = useState<"monthly" | "semester">("monthly");
   const [error, setError] = useState<string | null>(null);
+  const [showRevokeTrialConfirm, setShowRevokeTrialConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function handleGrant() {
@@ -27,6 +29,15 @@ export default function UserProControl({ userId, isPro }: Props) {
     startTransition(async () => {
       const result = await revokePro(userId);
       if (!result.success) setError(result.error ?? "Failed");
+    });
+  }
+
+  function handleRevokeTrial() {
+    setError(null);
+    startTransition(async () => {
+      const result = await revokeTrial(userId);
+      if (!result.success) setError(result.error ?? "Failed");
+      else setShowRevokeTrialConfirm(false);
     });
   }
 
@@ -63,6 +74,44 @@ export default function UserProControl({ userId, isPro }: Props) {
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             Grant Pro
           </button>
+        </div>
+      )}
+
+      {hasTrial && !isPro && (
+        <div className="border-t border-line pt-3 space-y-2">
+          <p className="text-sm font-medium text-text-primary">Trial access</p>
+          {showRevokeTrialConfirm ? (
+            <div className="space-y-2">
+              <p className="text-xs text-text-secondary">
+                This will reset the user&apos;s trial data — they will be able to start a new trial.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRevokeTrial}
+                  disabled={isPending}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 disabled:opacity-50 text-red-400 border border-red-500/20 text-sm font-medium rounded-lg transition-colors"
+                >
+                  {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Confirm revoke trial
+                </button>
+                <button
+                  onClick={() => setShowRevokeTrialConfirm(false)}
+                  disabled={isPending}
+                  className="text-sm text-text-muted hover:text-text-secondary transition-colors px-2"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowRevokeTrialConfirm(true)}
+              disabled={isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 text-amber-400 border border-amber-500/20 text-sm font-medium rounded-lg transition-colors"
+            >
+              Revoke trial
+            </button>
+          )}
         </div>
       )}
     </div>
