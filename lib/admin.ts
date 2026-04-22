@@ -1,4 +1,4 @@
-import { connectToDatabase, UserModel, SubscriptionModel, DeadlineModel, DiscountCodeModel, NotificationLogModel, CronRunLogModel } from "@/lib/mongodb";
+import { connectToDatabase, UserModel, SubscriptionModel, DeadlineModel, DiscountCodeModel, NotificationLogModel, CronRunLogModel, TestimonialModel } from "@/lib/mongodb";
 
 export interface AdminOverviewStats {
   totalUsers: number;
@@ -642,4 +642,32 @@ export async function getAdminSystemHealth(): Promise<AdminSystemHealth> {
     totalVerifiedUsers: verifiedUsers,
     orphanedPendingSubs: orphanedPending,
   };
+}
+
+export interface AdminTestimonial {
+  id: string;
+  quote: string;
+  name: string;
+  batch: string;
+  course: string;
+  photoKey: string | null;
+  isVisible: boolean;
+  order: number;
+  createdAt: Date;
+}
+
+export async function getAdminTestimonials(): Promise<AdminTestimonial[]> {
+  await connectToDatabase();
+  const docs = await TestimonialModel.find().sort({ order: 1, createdAt: -1 }).lean();
+  return docs.map((t) => ({
+    id: t._id.toString(),
+    quote: t.quote,
+    name: t.name,
+    batch: t.batch,
+    course: t.course,
+    photoKey: t.photoKey ?? null,
+    isVisible: t.isVisible,
+    order: t.order,
+    createdAt: t.createdAt,
+  }));
 }

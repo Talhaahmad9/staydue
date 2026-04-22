@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import { connectToDatabase, UserModel, DeadlineModel } from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
 import { sendOverdueDigestEmail } from "@/lib/resend";
-import { sendWhatsAppBatchOverdue } from "@/lib/whatsapp";
+import { sendWhatsAppOverdueMessage } from "@/lib/whatsapp";
 import { getDaysDifferenceInTimezone } from "@/utils/date";
 import { BatchNotificationPayload, BatchDeadlineItem } from "@/types/notification";
 
@@ -157,13 +157,30 @@ export async function GET(): Promise<NextResponse> {
     }
 
     if (user.phone) {
-      const whatsappResult = await sendWhatsAppBatchOverdue(batch, user.phone);
+      let whatsappSentCount = 0;
+      const whatsappErrors: string[] = [];
+      for (const dl of batch.deadlines) {
+        const whatsappResult = await sendWhatsAppOverdueMessage(
+          {
+            deadlineTitle: dl.title,
+            courseTitle: dl.courseTitle,
+            courseCode: dl.courseCode,
+            dueDate: dl.dueDate,
+          },
+          user.phone,
+        );
+        if (whatsappResult.success) {
+          whatsappSentCount++;
+        } else if (whatsappResult.error) {
+          whatsappErrors.push(whatsappResult.error);
+        }
+      }
       results.push({
         channel: "whatsapp",
-        sent: whatsappResult.success,
-        ...(whatsappResult.error && { error: whatsappResult.error }),
-        ...(whatsappResult.maskedPhone && { maskedPhone: whatsappResult.maskedPhone }),
+        sent: whatsappSentCount > 0,
+        sentCount: whatsappSentCount,
         deadlineCount: batch.deadlines.length,
+        ...(whatsappErrors.length > 0 && { errors: whatsappErrors }),
       });
     } else {
       results.push({

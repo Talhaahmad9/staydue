@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { grantPro, revokePro, revokeTrial } from "@/app/admin/users/actions";
+import { useConfirmation } from "@/contexts/ConfirmationModalContext";
 
 interface Props {
   userId: string;
@@ -13,8 +14,8 @@ interface Props {
 export default function UserProControl({ userId, isPro, hasTrial }: Props) {
   const [plan, setPlan] = useState<"monthly" | "semester">("monthly");
   const [error, setError] = useState<string | null>(null);
-  const [showRevokeTrialConfirm, setShowRevokeTrialConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { openConfirmation } = useConfirmation();
 
   function handleGrant() {
     setError(null);
@@ -26,18 +27,29 @@ export default function UserProControl({ userId, isPro, hasTrial }: Props) {
 
   function handleRevoke() {
     setError(null);
-    startTransition(async () => {
-      const result = await revokePro(userId);
-      if (!result.success) setError(result.error ?? "Failed");
+    openConfirmation({
+      title: "Revoke Pro access",
+      description: "This will immediately remove Pro access and expire any active subscriptions for this user.",
+      confirmLabel: "Revoke Pro",
+      variant: "destructive",
+      onConfirm: async () => {
+        const result = await revokePro(userId);
+        if (!result.success) setError(result.error ?? "Failed to revoke Pro");
+      },
     });
   }
 
   function handleRevokeTrial() {
     setError(null);
-    startTransition(async () => {
-      const result = await revokeTrial(userId);
-      if (!result.success) setError(result.error ?? "Failed");
-      else setShowRevokeTrialConfirm(false);
+    openConfirmation({
+      title: "Revoke trial access",
+      description: "This will reset the user's trial data. They will be able to start a new trial with the same phone number.",
+      confirmLabel: "Revoke trial",
+      variant: "destructive",
+      onConfirm: async () => {
+        const result = await revokeTrial(userId);
+        if (!result.success) setError(result.error ?? "Failed to revoke trial");
+      },
     });
   }
 
@@ -50,10 +62,8 @@ export default function UserProControl({ userId, isPro, hasTrial }: Props) {
       {isPro ? (
         <button
           onClick={handleRevoke}
-          disabled={isPending}
-          className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 disabled:opacity-50 text-red-400 border border-red-500/20 text-sm font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-sm font-medium rounded-lg transition-colors"
         >
-          {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
           Revoke Pro
         </button>
       ) : (
@@ -80,38 +90,12 @@ export default function UserProControl({ userId, isPro, hasTrial }: Props) {
       {hasTrial && !isPro && (
         <div className="border-t border-line pt-3 space-y-2">
           <p className="text-sm font-medium text-text-primary">Trial access</p>
-          {showRevokeTrialConfirm ? (
-            <div className="space-y-2">
-              <p className="text-xs text-text-secondary">
-                This will reset the user&apos;s trial data — they will be able to start a new trial.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleRevokeTrial}
-                  disabled={isPending}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 disabled:opacity-50 text-red-400 border border-red-500/20 text-sm font-medium rounded-lg transition-colors"
-                >
-                  {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Confirm revoke trial
-                </button>
-                <button
-                  onClick={() => setShowRevokeTrialConfirm(false)}
-                  disabled={isPending}
-                  className="text-sm text-text-muted hover:text-text-secondary transition-colors px-2"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowRevokeTrialConfirm(true)}
-              disabled={isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 text-amber-400 border border-amber-500/20 text-sm font-medium rounded-lg transition-colors"
-            >
-              Revoke trial
-            </button>
-          )}
+          <button
+            onClick={handleRevokeTrial}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-sm font-medium rounded-lg transition-colors"
+          >
+            Revoke trial
+          </button>
         </div>
       )}
     </div>

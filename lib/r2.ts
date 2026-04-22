@@ -117,3 +117,65 @@ export async function deleteScreenshot(
     return { success: false, error: errorMessage };
   }
 }
+
+export async function uploadTestimonialPhoto(
+  file: Buffer,
+  fileName: string,
+  contentType: string,
+): Promise<{ success: boolean; key?: string; error?: string }> {
+  try {
+    const { R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME } = process.env;
+
+    if (!R2_ENDPOINT || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
+      console.error("[r2/upload-testimonial]", "Missing R2 credentials in environment");
+      return { success: false, error: "R2 storage not configured" };
+    }
+
+    if (file.length > MAX_FILE_SIZE) {
+      return { success: false, error: "File exceeds 5MB limit" };
+    }
+
+    const key = `testimonials/${Date.now()}-${fileName}`;
+    const client = getR2Client();
+
+    await client.send(
+      new PutObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: key,
+        Body: file,
+        ContentType: contentType,
+      }),
+    );
+
+    return { success: true, key };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[r2/upload-testimonial]", errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
+export async function getTestimonialPhotoUrl(
+  key: string,
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const { R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME } = process.env;
+
+    if (!R2_ENDPOINT || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
+      return { success: false, error: "R2 storage not configured" };
+    }
+
+    const client = getR2Client();
+    const url = await getSignedUrl(
+      client,
+      new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }),
+      { expiresIn: 3600 },
+    );
+
+    return { success: true, url };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[r2/get-testimonial-url]", errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}

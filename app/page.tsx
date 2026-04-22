@@ -7,8 +7,41 @@ import PricingSection from "@/components/landing/PricingSection";
 import FAQSection from "@/components/landing/FAQSection";
 import MiniAboutSection from "@/components/landing/MiniAboutSection";
 import LandingFooter from "@/components/landing/LandingFooter";
+import { connectToDatabase, TestimonialModel } from "@/lib/mongodb";
+import { getTestimonialPhotoUrl } from "@/lib/r2";
 
-export default function Home(): React.ReactElement {
+async function getVisibleTestimonials() {
+  try {
+    await connectToDatabase();
+    const docs = await TestimonialModel.find({ isVisible: true })
+      .sort({ order: 1, createdAt: -1 })
+      .lean();
+
+    return await Promise.all(
+      docs.map(async (t) => {
+        let photoUrl: string | null = null;
+        if (t.photoKey) {
+          const result = await getTestimonialPhotoUrl(t.photoKey);
+          if (result.success && result.url) photoUrl = result.url;
+        }
+        return {
+          id: t._id.toString(),
+          quote: t.quote,
+          name: t.name,
+          batch: t.batch,
+          course: t.course,
+          photoUrl,
+        };
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+export default async function Home(): Promise<React.ReactElement> {
+  const testimonials = await getVisibleTestimonials();
+
   return (
     <div className="min-h-screen flex flex-col bg-page-bg">
       <LandingNav />
@@ -16,7 +49,7 @@ export default function Home(): React.ReactElement {
         <HeroSection />
         <HowItWorksSection />
         <FeaturesSection />
-        <TestimonialsSection />
+        <TestimonialsSection testimonials={testimonials} />
         <PricingSection />
         <FAQSection />
         <MiniAboutSection />

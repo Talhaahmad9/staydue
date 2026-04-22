@@ -11,6 +11,7 @@ import {
   Tag,
   Bell,
   Activity,
+  MessageSquareQuote,
   Menu,
   X,
   LogOut,
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/admin/users", label: "Users", icon: Users, exact: false },
   { href: "/admin/revenue", label: "Revenue", icon: BarChart3, exact: false },
   { href: "/admin/discounts", label: "Discounts", icon: Tag, exact: false },
+  { href: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote, exact: false },
   { href: "/admin/notifications", label: "Notifications", icon: Bell, exact: false },
   { href: "/admin/system", label: "System", icon: Activity, exact: false },
 ];

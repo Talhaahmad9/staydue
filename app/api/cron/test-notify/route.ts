@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { connectToDatabase, UserModel, DeadlineModel } from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
 import { sendReminderDigestEmail } from "@/lib/resend";
-import { sendWhatsAppBatchReminder } from "@/lib/whatsapp";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { BatchNotificationPayload } from "@/types/notification";
 
 export async function GET(): Promise<NextResponse> {
@@ -70,9 +70,21 @@ export async function GET(): Promise<NextResponse> {
 
     let whatsappPhone: string | undefined;
     if (user.phone) {
-      const whatsappResult = await sendWhatsAppBatchReminder(batch, user.phone);
-      if (whatsappResult.success) {
-        whatsappPhone = whatsappResult.maskedPhone;
+      for (const dl of batch.deadlines) {
+        const whatsappResult = await sendWhatsAppMessage(
+          {
+            userName: batch.userName,
+            deadlineTitle: dl.title,
+            courseCode: dl.courseCode,
+            courseTitle: dl.courseTitle,
+            dueDate: dl.dueDate,
+          },
+          user.phone,
+          false,
+        );
+        if (whatsappResult.success) {
+          whatsappPhone = whatsappResult.maskedPhone;
+        }
       }
     }
 

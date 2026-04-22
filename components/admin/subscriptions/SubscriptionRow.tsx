@@ -10,6 +10,7 @@ import {
   revokeSubscription,
   getSubscriptionScreenshotUrl,
 } from "@/app/admin/subscriptions/actions";
+import { useConfirmation } from "@/contexts/ConfirmationModalContext";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-500/15 text-amber-400 border-amber-500/30",
@@ -33,9 +34,9 @@ export default function SubscriptionRow({ sub }: Props) {
   const [screenshotLoading, setScreenshotLoading] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
-  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { openConfirmation } = useConfirmation();
 
   async function handleExpand() {
     const next = !expanded;
@@ -162,45 +163,25 @@ export default function SubscriptionRow({ sub }: Props) {
           {sub.status === "active" && (
             <div className="space-y-3">
               {error && <p className="text-xs text-red-400">{error}</p>}
-              {showRevokeConfirm ? (
-                <div className="space-y-2">
-                  <p className="text-xs text-text-secondary">
-                    This will expire the subscription and revoke the user&apos;s Pro access.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setError(null);
-                        startTransition(async () => {
-                          const result = await revokeSubscription(sub.id);
-                          if (!result.success) setError(result.error ?? "Failed to revoke");
-                          else setShowRevokeConfirm(false);
-                        });
-                      }}
-                      disabled={isPending}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 disabled:opacity-50 text-red-400 border border-red-500/20 text-sm font-medium rounded-lg transition-colors"
-                    >
-                      {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                      Confirm revoke
-                    </button>
-                    <button
-                      onClick={() => setShowRevokeConfirm(false)}
-                      disabled={isPending}
-                      className="text-sm text-text-muted hover:text-text-secondary transition-colors px-2"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowRevokeConfirm(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-sm font-medium rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                  Revoke subscription
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  setError(null);
+                  openConfirmation({
+                    title: "Revoke subscription",
+                    description: "This will expire the subscription and revoke the user's Pro access if no other active subscriptions remain.",
+                    confirmLabel: "Revoke",
+                    variant: "destructive",
+                    onConfirm: async () => {
+                      const result = await revokeSubscription(sub.id);
+                      if (!result.success) setError(result.error ?? "Failed to revoke");
+                    },
+                  });
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-sm font-medium rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Revoke subscription
+              </button>
             </div>
           )}
 

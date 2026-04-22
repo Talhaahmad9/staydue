@@ -1,5 +1,19 @@
-import { DeadlineNotificationPayload } from "@/types/notification";
 import { BatchNotificationPayload } from "@/types/notification";
+
+export interface WhatsAppReminderInput {
+  userName: string;
+  deadlineTitle: string;
+  courseCode: string;
+  courseTitle: string;
+  dueDate: string;
+}
+
+export interface WhatsAppOverdueInput {
+  deadlineTitle: string;
+  courseTitle: string;
+  courseCode: string;
+  dueDate: string;
+}
 
 interface WhatsAppResponse {
   messaging_product: string;
@@ -44,7 +58,7 @@ function maskPhoneNumber(phone: string): string {
 }
 
 export async function sendWhatsAppMessage(
-  payload: DeadlineNotificationPayload,
+  input: WhatsAppReminderInput,
   phoneNumber: string,
   isTest: boolean = false,
 ): Promise<{ success: boolean; error?: string; maskedPhone?: string }> {
@@ -91,13 +105,13 @@ export async function sendWhatsAppMessage(
         {
           type: "body",
           parameters: [
-            { type: "text", text: payload.userName },
-            { type: "text", text: payload.deadline.title },
+            { type: "text", text: input.userName },
+            { type: "text", text: input.deadlineTitle },
             {
               type: "text",
-              text: `${payload.deadline.courseCode} (${payload.deadline.courseTitle})`,
+              text: `${input.courseCode} (${input.courseTitle})`,
             },
-            { type: "text", text: payload.deadline.dueDate },
+            { type: "text", text: input.dueDate },
           ],
         },
       ];
@@ -152,7 +166,7 @@ export async function sendWhatsAppMessage(
 }
 
 export async function sendWhatsAppOverdueMessage(
-  payload: DeadlineNotificationPayload,
+  input: WhatsAppOverdueInput,
   phoneNumber: string,
 ): Promise<{ success: boolean; error?: string; maskedPhone?: string }> {
   try {
@@ -190,10 +204,10 @@ export async function sendWhatsAppOverdueMessage(
           {
             type: "body",
             parameters: [
-              { type: "text", text: payload.deadline.title },
-              { type: "text", text: payload.deadline.courseTitle },
-              { type: "text", text: payload.deadline.courseCode },
-              { type: "text", text: payload.deadline.dueDate },
+              { type: "text", text: input.deadlineTitle },
+              { type: "text", text: input.courseTitle },
+              { type: "text", text: input.courseCode },
+              { type: "text", text: input.dueDate },
             ],
           },
         ],

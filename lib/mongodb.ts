@@ -320,4 +320,38 @@ export const CronRunLogModel: Model<CronRunLogDocument> =
   mongoose.models.CronRunLog ||
   mongoose.model<CronRunLogDocument>("CronRunLog", cronRunLogSchema);
 
-export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry, NotificationPreferences, SubscriptionDocument, DiscountCodeDocument, NotificationLogDocument, CronRunLogDocument };
+// ---------------------------------------------------------------------------
+// Testimonial — student testimonials shown on the landing page
+// ---------------------------------------------------------------------------
+interface TestimonialDocument {
+  quote: string;
+  name: string;
+  batch: string;
+  course: string;
+  photoKey?: string;
+  isVisible: boolean;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const testimonialSchema = new Schema<TestimonialDocument>(
+  {
+    quote: { type: String, required: true, trim: true, maxlength: 500 },
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    batch: { type: String, required: true, trim: true, maxlength: 40 },
+    course: { type: String, required: true, trim: true, maxlength: 80 },
+    photoKey: { type: String, required: false },
+    isVisible: { type: Boolean, required: true, default: true },
+    order: { type: Number, required: true, default: 0 },
+  },
+  { timestamps: true }
+);
+
+testimonialSchema.index({ isVisible: 1, order: 1 });
+
+export const TestimonialModel: Model<TestimonialDocument> =
+  mongoose.models.Testimonial ||
+  mongoose.model<TestimonialDocument>("Testimonial", testimonialSchema);
+
+export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry, NotificationPreferences, SubscriptionDocument, DiscountCodeDocument, NotificationLogDocument, CronRunLogDocument, TestimonialDocument };

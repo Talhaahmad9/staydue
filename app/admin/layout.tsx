@@ -1,6 +1,7 @@
 import { SubscriptionModel, connectToDatabase } from "@/lib/mongodb";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminMobileNav from "@/components/admin/AdminMobileNav";
+import AdminProviders from "@/components/admin/AdminProviders";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await connectToDatabase();
@@ -11,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminSidebar pendingCount={pendingCount} />
       <div className="flex-1 flex flex-col min-w-0">
         <AdminMobileNav pendingCount={pendingCount} />
-        {children}
+        <AdminProviders>{children}</AdminProviders>
       </div>
     </div>
   );
