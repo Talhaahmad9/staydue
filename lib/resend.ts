@@ -11,7 +11,7 @@ import NewPaymentAlertEmail from "@/emails/NewPaymentAlertEmail";
 import { DeadlineNotificationPayload, ReminderInterval, BatchNotificationPayload } from "@/types/notification";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = "StayDue <reminders@staydue.app>";
+const FROM = "StayDue <reminders@mail.staydue.app>";
 
 // Email delivery only. For WhatsApp delivery of the same payload,
 // see lib/whatsapp.ts (to be implemented).
