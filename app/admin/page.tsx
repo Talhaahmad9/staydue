@@ -32,12 +32,13 @@ export default async function AdminOverviewPage() {
       {/* Users */}
       <section className="space-y-2">
         <p className="text-xs font-medium text-text-muted uppercase tracking-wider">Users</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
           <StatCard label="Total users" value={stats.totalUsers} />
           <StatCard label="Verified" value={stats.verifiedUsers} sub={`${Math.round((stats.verifiedUsers / Math.max(stats.totalUsers, 1)) * 100)}% of total`} />
           <StatCard label="Onboarded" value={stats.onboardedUsers} sub={`${onboardingRate}% conversion`} />
           <StatCard label="Pro" value={stats.proUsers} accent="brand" />
           <StatCard label="Trial" value={stats.trialUsers} accent="warning" />
+          <StatCard label="Trial ended" value={stats.expiredTrialUsers} accent="danger" />
           <StatCard label="Free" value={stats.freeUsers} />
         </div>
       </section>

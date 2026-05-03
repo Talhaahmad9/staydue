@@ -6,6 +6,7 @@ export interface AdminOverviewStats {
   onboardedUsers: number;
   proUsers: number;
   trialUsers: number;
+  expiredTrialUsers: number;
   freeUsers: number;
   pendingSubscriptions: number;
   totalRevenue: number;
@@ -40,6 +41,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     totalDeadlines,
     signupAgg,
     trialAgg,
+    expiredTrialAgg,
   ] = await Promise.all([
     UserModel.countDocuments(),
     UserModel.countDocuments({ isVerified: true }),
@@ -73,12 +75,18 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
       trialStartedAt: { $gte: trialEndCutoff },
       isPro: false,
     }),
+    // Expired trial users: had a trial that ended, not pro
+    UserModel.countDocuments({
+      trialStartedAt: { $ne: null, $lt: trialEndCutoff },
+      isPro: false,
+    }),
   ]);
 
   const totalRevenue = revenueAgg[0]?.total ?? 0;
   const revenueThisMonth = revenueMonthAgg[0]?.total ?? 0;
   const trialUsers = trialAgg;
-  const freeUsers = totalUsers - proUsers - trialUsers;
+  const expiredTrialUsers = expiredTrialAgg;
+  const freeUsers = totalUsers - proUsers - trialUsers - expiredTrialUsers;
 
   // Build a full 30-day date series, filling 0 for days with no signups
   const signupMap = new Map<string, number>(
@@ -94,6 +102,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
   const tierBreakdown = [
     { name: "Pro", value: proUsers },
     { name: "Trial", value: trialUsers },
+    { name: "Expired", value: expiredTrialUsers },
     { name: "Free", value: Math.max(0, freeUsers) },
   ];
 
@@ -103,6 +112,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     onboardedUsers,
     proUsers,
     trialUsers,
+    expiredTrialUsers,
     freeUsers: Math.max(0, freeUsers),
     pendingSubscriptions,
     totalRevenue,

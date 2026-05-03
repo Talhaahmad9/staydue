@@ -1,6 +1,12 @@
 import Link from "next/link";
 import type { AdminUser } from "@/lib/admin";
 
+const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isTrialActive(trialStartedAt: Date | string): boolean {
+  return new Date().getTime() - new Date(trialStartedAt).getTime() < TRIAL_MS;
+}
+
 function TierBadge({ user }: { user: AdminUser }) {
   if (user.isPro) {
     return (
@@ -10,9 +16,16 @@ function TierBadge({ user }: { user: AdminUser }) {
     );
   }
   if (user.trialStartedAt) {
+    if (isTrialActive(user.trialStartedAt)) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          Trial
+        </span>
+      );
+    }
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30">
-        Trial
+      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-urgency-today/15 text-urgency-todayText border border-urgency-todayBorder">
+        Trial ended
       </span>
     );
   }
