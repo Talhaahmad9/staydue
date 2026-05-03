@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { AdminUser } from "@/lib/admin";
+import DeleteUserButton from "@/components/admin/users/DeleteUserButton";
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -56,51 +57,59 @@ export default function UserTable({ users }: Props) {
   return (
     <div className="border border-line rounded-xl overflow-hidden">
       {/* Desktop table header */}
-      <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 px-4 py-2.5 bg-page-surface border-b border-line">
+      <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2.5 bg-page-surface border-b border-line">
         <p className="text-xs text-text-muted font-medium uppercase tracking-wider">User</p>
         <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Tier</p>
         <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Status</p>
         <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Admission</p>
         <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Joined</p>
+        <p className="text-xs text-text-muted font-medium uppercase tracking-wider w-8" />
       </div>
 
       <div className="divide-y divide-line">
         {users.map((user) => (
-          <Link
-            key={user.id}
-            href={`/admin/users/${user.id}`}
-            className="flex sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 px-4 py-3 bg-page-bg hover:bg-page-surface transition-colors items-start sm:items-center"
-          >
-            {/* User */}
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-text-primary truncate">{user.name}</p>
-              <p className="text-xs text-text-muted truncate">{user.email}</p>
+          <div key={user.id} className="bg-page-bg hover:bg-page-surface transition-colors">
+            {/* Mobile layout */}
+            <div className="flex sm:hidden items-start gap-2 px-4 py-3">
+              <Link href={`/admin/users/${user.id}`} className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-text-primary truncate">{user.name}</p>
+                <p className="text-xs text-text-muted truncate">{user.email}</p>
+              </Link>
+              <div className="flex flex-col items-end gap-1">
+                <TierBadge user={user} />
+                <p className="text-xs text-text-muted">{formatDate(user.createdAt)}</p>
+                <DeleteUserButton userId={user.id} userName={user.name} />
+              </div>
             </div>
 
-            {/* Mobile: tier + status inline */}
-            <div className="sm:hidden flex flex-col gap-1 items-end">
-              <TierBadge user={user} />
-              <p className="text-xs text-text-muted">{formatDate(user.createdAt)}</p>
+            {/* Desktop layout — Link spans 5 cols via subgrid, delete in col 6 */}
+            <div className="hidden sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] sm:gap-4">
+              <Link
+                href={`/admin/users/${user.id}`}
+                className="col-span-5 grid grid-cols-subgrid gap-4 px-4 py-3 items-center"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-text-primary truncate">{user.name}</p>
+                  <p className="text-xs text-text-muted truncate">{user.email}</p>
+                </div>
+                <div>
+                  <TierBadge user={user} />
+                </div>
+                <div className="flex items-center">
+                  {user.hasCompletedOnboarding ? (
+                    <span className="text-xs text-green-400">Onboarded</span>
+                  ) : (
+                    <span className="text-xs text-text-muted">Pending</span>
+                  )}
+                </div>
+                <p className="text-sm text-text-secondary">{user.admissionYear ?? "—"}</p>
+                <p className="text-sm text-text-secondary">{formatDate(user.createdAt)}</p>
+              </Link>
+              <div className="flex items-center pr-3">
+                <DeleteUserButton userId={user.id} userName={user.name} />
+              </div>
             </div>
-
-            {/* Desktop columns */}
-            <div className="hidden sm:block">
-              <TierBadge user={user} />
-            </div>
-            <div className="hidden sm:flex items-center gap-2">
-              {user.hasCompletedOnboarding ? (
-                <span className="text-xs text-green-400">Onboarded</span>
-              ) : (
-                <span className="text-xs text-text-muted">Pending</span>
-              )}
-            </div>
-            <p className="hidden sm:block text-sm text-text-secondary">
-              {user.admissionYear ?? "—"}
-            </p>
-            <p className="hidden sm:block text-sm text-text-secondary">
-              {formatDate(user.createdAt)}
-            </p>
-          </Link>
+          </div>
         ))}
       </div>
     </div>
