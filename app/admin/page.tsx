@@ -4,6 +4,8 @@ import SignupChart from "@/components/admin/charts/SignupChart";
 import TierChart from "@/components/admin/charts/TierChart";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminOverviewPage() {
   const stats = await getAdminOverviewStats();
 
