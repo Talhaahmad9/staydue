@@ -17,6 +17,10 @@ interface StatusResponse {
   } | null;
 }
 
+interface BillingSettingsProps {
+  refreshKey?: number;
+}
+
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-GB", {
@@ -26,7 +30,7 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
-export default function BillingSettings(): React.ReactElement {
+export default function BillingSettings({ refreshKey = 0 }: BillingSettingsProps): React.ReactElement {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "semester">("monthly");
@@ -40,7 +44,7 @@ export default function BillingSettings(): React.ReactElement {
       .then((data) => setStatus(data))
       .catch((error) => console.error("[billing/status]", error))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   if (loading) {
     return (

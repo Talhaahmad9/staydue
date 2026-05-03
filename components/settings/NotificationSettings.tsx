@@ -7,9 +7,10 @@ import type { SettingsUserData } from "@/app/settings/page";
 
 interface NotificationSettingsProps {
   user: SettingsUserData;
+  onPhoneVerified?: () => void;
 }
 
-export default function NotificationSettings({ user }: NotificationSettingsProps): React.ReactElement {
+export default function NotificationSettings({ user, onPhoneVerified }: NotificationSettingsProps): React.ReactElement {
   const [emailEnabled, setEmailEnabled] = useState(user.notificationPreferences?.emailEnabled ?? true);
   const [reminderIntervals, setReminderIntervals] = useState(
     user.notificationPreferences?.reminderIntervals ?? ["3-day", "1-day", "day-of"]
@@ -131,7 +132,7 @@ export default function NotificationSettings({ user }: NotificationSettingsProps
         <PhoneNumberInput
           initialPhone={user.phone ?? ""}
           isPhoneVerified={user.isPhoneVerified ?? false}
-          onVerified={() => {}}
+          onVerified={() => { onPhoneVerified?.(); }}
         />
 
         {/* Messages */}

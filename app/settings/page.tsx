@@ -5,8 +5,7 @@ import { connectToDatabase, UserModel } from "@/lib/mongodb";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import AccountSettings from "@/components/settings/AccountSettings";
 import CalendarSettings from "@/components/settings/CalendarSettings";
-import NotificationSettings from "@/components/settings/NotificationSettings";
-import BillingSettings from "@/components/settings/BillingSettings";
+import NotificationsAndBillingWrapper from "@/components/settings/NotificationsAndBillingWrapper";
 import DangerZone from "@/components/settings/DangerZone";
 
 export const metadata = {
@@ -61,8 +60,7 @@ export default async function SettingsPage(): Promise<React.ReactElement> {
     <SettingsLayout title="Settings">
       <AccountSettings user={userData} />
       <CalendarSettings user={userData} />
-      <NotificationSettings user={userData} />
-      <BillingSettings />
+      <NotificationsAndBillingWrapper user={userData} />
       <DangerZone />
     </SettingsLayout>
   );

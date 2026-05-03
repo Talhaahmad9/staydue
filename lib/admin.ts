@@ -27,6 +27,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const trialEndCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const [
     totalUsers,
@@ -67,9 +68,9 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
       },
       { $sort: { _id: 1 } },
     ]),
-    // Trial users: trialStartedAt set but not pro
+    // Trial users: active trial (started within last 7 days) and not pro
     UserModel.countDocuments({
-      trialStartedAt: { $ne: null },
+      trialStartedAt: { $gte: trialEndCutoff },
       isPro: false,
     }),
   ]);
@@ -206,8 +207,8 @@ export async function getAdminUsers(
 
   const query: Record<string, unknown> = {};
   if (filter.tier === "pro") query.isPro = true;
-  if (filter.tier === "trial") { query.trialStartedAt = { $ne: null }; query.isPro = false; }
-  if (filter.tier === "free") { query.isPro = false; query.trialStartedAt = null; }
+  if (filter.tier === "trial") { query.trialStartedAt = { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }; query.isPro = false; }
+  if (filter.tier === "free") { query.isPro = false; query.$or = [{ trialStartedAt: null }, { trialStartedAt: { $lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }]; }
   if (filter.onboarded === "yes") query.hasCompletedOnboarding = true;
   if (filter.onboarded === "no") query.hasCompletedOnboarding = false;
   if (filter.search) {
