@@ -46,9 +46,9 @@ export default async function OnboardingPage(): Promise<React.ReactElement> {
       <main className="min-h-screen bg-page-bg">
         <div className="mx-auto max-w-3xl px-6 py-8">
           <div className="mb-8">
-            <h1 className="text-2xl font-medium text-text-primary">Set up your reminders</h1>
+            <h1 className="text-2xl font-medium text-text-primary">Set up your account</h1>
             <p className="mt-2 text-sm text-text-secondary">
-              Select your admission year and connect your calendar to import accurate course deadlines.
+              Connect your Moodle calendar to import deadlines, then optionally add WhatsApp reminders.
             </p>
           </div>
           <OnboardingSteps admissionYears={admissionYears} />

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
@@ -9,15 +8,14 @@ import { ChevronDown } from "lucide-react";
 import ButtonLoader from "@/components/shared/loaders/ButtonLoader";
 
 interface CalendarUrlFormProps {
-  phone: string;
   admissionYears: string[];
+  onSuccess: () => void;
 }
 
 export default function CalendarUrlForm({
-  phone,
   admissionYears,
+  onSuccess,
 }: CalendarUrlFormProps): React.ReactElement {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState("");
@@ -42,12 +40,10 @@ export default function CalendarUrlForm({
     }
 
     try {
-      const payload = { url, phone, admissionYear };
-
       const response = await fetch("/api/calendar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ url, admissionYear }),
       });
 
       if (!response.ok) {
@@ -55,8 +51,7 @@ export default function CalendarUrlForm({
         throw new Error(data.error ?? "Could not connect your calendar.");
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      onSuccess();
     } catch (submitError) {
       setError(
         submitError instanceof Error
