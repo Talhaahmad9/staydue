@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import StaticPageLayout from "@/components/landing/StaticPageLayout";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — StayDue",
+  title: "Terms of Service",
   description: "Terms and conditions for using StayDue.",
 };
 

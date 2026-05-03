@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 import OnboardingSteps from "@/components/onboarding/OnboardingSteps";
 import PageTransition from "@/components/shared/PageTransition";
 import { auth } from "@/lib/auth";

@@ -9,7 +9,7 @@ import NotificationsAndBillingWrapper from "@/components/settings/NotificationsA
 import DangerZone from "@/components/settings/DangerZone";
 
 export const metadata = {
-  title: "Settings — StayDue",
+  title: "Settings",
   description: "Manage your StayDue account and notification settings",
 };
 

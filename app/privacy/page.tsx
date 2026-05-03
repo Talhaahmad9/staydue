@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import StaticPageLayout from "@/components/landing/StaticPageLayout";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — StayDue",
+  title: "Privacy Policy",
   description: "How StayDue collects, uses, and protects your information.",
 };
 

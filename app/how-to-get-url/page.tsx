@@ -3,7 +3,7 @@ import StaticPageLayout from "@/components/landing/StaticPageLayout";
 import TutorialContent from "@/components/onboarding/TutorialContent";
 
 export const metadata: Metadata = {
-  title: "How to get your Moodle URL — StayDue",
+  title: "How to get your Moodle calendar URL",
   description:
     "Step-by-step guide for IOBM students on how to find and copy the Moodle calendar export URL for StayDue.",
 };

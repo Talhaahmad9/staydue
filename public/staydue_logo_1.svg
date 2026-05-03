@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="100%"
+   viewBox="0 0 680 160"
+   version="1.1"
+   id="svg14"
+   sodipodi:docname="staydue_logo_1.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview14"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="2.6073529"
+     inkscape:cx="340"
+     inkscape:cy="79.966159"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg14" />
+  <defs
+     id="defs1">
+    <rect
+       x="138.07107"
+       y="12.272984"
+       width="432.62267"
+       height="126.56514"
+       id="rect15" />
+  </defs>
+  <g
+     transform="translate(160, 20)"
+     style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+     id="g14">
+    <!-- Calendar body -->
+    <rect
+       x="0"
+       y="18"
+       width="56"
+       height="52"
+       rx="8"
+       fill="#242424"
+       stroke="#0D9488"
+       stroke-width="1.5"
+       style="fill:rgb(36, 36, 36);stroke:rgb(13, 148, 136);color:rgb(255, 255, 255);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect1" />
+    <!-- Calendar top bar -->
+    <rect
+       x="0"
+       y="18"
+       width="56"
+       height="16"
+       rx="8"
+       fill="#0D9488"
+       style="fill:rgb(13, 148, 136);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect2" />
+    <rect
+       x="0"
+       y="26"
+       width="56"
+       height="8"
+       fill="#0D9488"
+       style="fill:rgb(13, 148, 136);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect3" />
+    <!-- Binding pegs -->
+    <rect
+       x="14"
+       y="12"
+       width="4"
+       height="14"
+       rx="2"
+       fill="#0D9488"
+       style="fill:rgb(13, 148, 136);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect4" />
+    <rect
+       x="38"
+       y="12"
+       width="4"
+       height="14"
+       rx="2"
+       fill="#0D9488"
+       style="fill:rgb(13, 148, 136);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect5" />
+    <!-- Calendar grid dots -->
+    <rect
+       x="8"
+       y="44"
+       width="6"
+       height="6"
+       rx="1.5"
+       fill="#333333"
+       style="fill:rgb(51, 51, 51);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect6" />
+    <rect
+       x="21"
+       y="44"
+       width="6"
+       height="6"
+       rx="1.5"
+       fill="#333333"
+       style="fill:rgb(51, 51, 51);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect7" />
+    <rect
+       x="34"
+       y="44"
+       width="6"
+       height="6"
+       rx="1.5"
+       fill="#0D9488"
+       style="fill:rgb(13, 148, 136);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect8" />
+    <rect
+       x="42"
+       y="44"
+       width="6"
+       height="6"
+       rx="1.5"
+       fill="#333333"
+       style="fill:rgb(51, 51, 51);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect9" />
+    <rect
+       x="8"
+       y="57"
+       width="6"
+       height="6"
+       rx="1.5"
+       fill="#333333"
+       style="fill:rgb(51, 51, 51);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect10" />
+    <rect
+       x="21"
+       y="57"
+       width="6"
+       height="6"
+       rx="1.5"
+       fill="#2D1515"
+       stroke="#5C2020"
+       stroke-width="1"
+       style="fill:rgb(45, 21, 21);stroke:rgb(92, 32, 32);color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect11" />
+    <rect
+       x="34"
+       y="57"
+       width="6"
+       height="6"
+       rx="1.5"
+       fill="#333333"
+       style="fill:rgb(51, 51, 51);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect12" />
+    <rect
+       x="42"
+       y="57"
+       width="6"
+       height="6"
+       rx="1.5"
+       fill="#333333"
+       style="fill:rgb(51, 51, 51);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="rect13" />
+    <!-- Wordmark -->
+    <text
+       x="76"
+       y="58"
+       font-size="42"
+       letter-spacing="-1"
+       style="fill:#333333;stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:-apple-system, Geist, sans-serif;font-size:42px;font-weight:500;text-anchor:start;dominant-baseline:auto"
+       id="text13">StayDue</text>
+    <!-- Tagline beneath wordmark -->
+    <text
+       x="79"
+       y="78"
+       font-size="12"
+       letter-spacing="3"
+       style="fill:rgb(115, 115, 115);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:-apple-system, Geist, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto"
+       id="text14">NEVER MISS A DEADLINE</text>
+    <text
+       xml:space="preserve"
+       transform="translate(-160,-20)"
+       id="text15"
+       style="text-orientation:auto;fill:#000000;text-align:start;writing-mode:lr-tb;direction:ltr;fill-opacity:0;white-space:pre;shape-inside:url(#rect15)" />
+  </g>
+</svg>

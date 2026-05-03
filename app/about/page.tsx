@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import StaticPageLayout from "@/components/landing/StaticPageLayout";
 
 export const metadata: Metadata = {
-  title: "About — StayDue",
+  title: "About",
   description:
     "StayDue is a deadline reminder app built for university students on Moodle-based learning systems.",
 };
