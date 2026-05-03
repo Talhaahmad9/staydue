@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { AdminUser } from "@/lib/admin";
 import DeleteUserButton from "@/components/admin/users/DeleteUserButton";
 
-const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
+const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
 
 function isTrialActive(trialStartedAt: Date | string): boolean {
   return new Date().getTime() - new Date(trialStartedAt).getTime() < TRIAL_MS;

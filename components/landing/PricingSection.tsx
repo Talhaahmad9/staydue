@@ -35,8 +35,8 @@ export default function PricingSection(): React.ReactElement {
       >
         <span className="w-2 h-2 rounded-full bg-brand shrink-0 hidden sm:block" />
         <p className="text-sm text-text-secondary leading-relaxed">
-          <span className="font-medium text-brand">7-day free WhatsApp trial</span> — verify your
-          phone number and get WhatsApp reminders free for 7 days. No payment needed to try it.
+          <span className="font-medium text-brand">30-day free WhatsApp trial</span> — verify your
+          phone number and get WhatsApp reminders free for 30 days. No payment needed to try it.
         </p>
       </motion.div>
 

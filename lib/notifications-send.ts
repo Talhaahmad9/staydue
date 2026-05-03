@@ -26,7 +26,7 @@ function isWhatsAppEligible(user: {
   if (user.trialStartedAt) {
     const msElapsed = now.getTime() - user.trialStartedAt.getTime();
     const daysElapsed = msElapsed / (1000 * 60 * 60 * 24);
-    if (daysElapsed <= 7) {
+    if (daysElapsed <= 30) {
       return true;
     }
   }

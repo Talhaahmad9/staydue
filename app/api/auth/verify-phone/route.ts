@@ -5,6 +5,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase, UserModel, RetrialAttemptModel } from "@/lib/mongodb";
 import { verifyOtp } from "@/utils/otp";
+import { sendTrialStartedEmail } from "@/lib/resend";
 
 const schema = z.object({
   otp: z.string().length(6).regex(/^\d+$/),
@@ -68,7 +69,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const now = new Date();
     const trialStartedAt = phoneAlreadyUsed
-      ? new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000) // already expired
+      ? new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000) // already expired
       : now; // fresh trial
 
     if (phoneAlreadyUsed) {
@@ -90,6 +91,13 @@ export async function POST(request: Request): Promise<NextResponse> {
         $unset: { phoneOtp: "", phoneOtpExpiry: "" },
       }
     );
+
+    // Fire-and-forget trial welcome email — only when trial is genuinely fresh
+    if (!phoneAlreadyUsed && session.user.email) {
+      const trialEndsAt = new Date(trialStartedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+      sendTrialStartedEmail(session.user.email, session.user.name ?? "there", trialEndsAt)
+        .catch((e: unknown) => console.error("[auth/verify-phone/trial-email]", e));
+    }
 
     return NextResponse.json({
       success: true,

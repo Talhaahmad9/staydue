@@ -8,6 +8,10 @@ import OtpEmail from "@/emails/OtpEmail";
 import PasswordResetEmail from "@/emails/PasswordResetEmail";
 import ProActivatedEmail from "@/emails/ProActivatedEmail";
 import NewPaymentAlertEmail from "@/emails/NewPaymentAlertEmail";
+import TrialStartedEmail from "@/emails/TrialStartedEmail";
+import TrialEndingEmail from "@/emails/TrialEndingEmail";
+import ProExpiringEmail from "@/emails/ProExpiringEmail";
+import GracePeriodEmail from "@/emails/GracePeriodEmail";
 import { DeadlineNotificationPayload, ReminderInterval, BatchNotificationPayload } from "@/types/notification";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -314,6 +318,126 @@ export async function sendNewPaymentAlertEmail(
     return { success: true };
   } catch (error) {
     console.error("[resend/payment-alert]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function sendTrialStartedEmail(
+  to: string,
+  userName: string,
+  trialEndsAt: Date
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!to || !to.includes("@")) {
+      return { success: false, error: "Invalid email address" };
+    }
+
+    const html = await render(TrialStartedEmail({ userName, trialEndsAt }));
+
+    const response = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Your 30-day StayDue trial has started",
+      html,
+    });
+
+    if (response.error) {
+      console.error("[resend/trial-started/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/trial-started]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function sendTrialEndingEmail(
+  to: string,
+  userName: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!to || !to.includes("@")) {
+      return { success: false, error: "Invalid email address" };
+    }
+
+    const html = await render(TrialEndingEmail({ userName }));
+    const response = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Your StayDue trial ends today",
+      html,
+    });
+
+    if (response.error) {
+      console.error("[resend/trial-ending/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/trial-ending]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function sendProExpiringEmail(
+  to: string,
+  userName: string,
+  expiresAt: Date
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!to || !to.includes("@")) {
+      return { success: false, error: "Invalid email address" };
+    }
+
+    const html = await render(ProExpiringEmail({ userName, expiresAt }));
+    const response = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Your StayDue Pro expires tomorrow — renew to stay uninterrupted",
+      html,
+    });
+
+    if (response.error) {
+      console.error("[resend/pro-expiring/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/pro-expiring]", error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function sendGracePeriodEmail(
+  to: string,
+  userName: string,
+  daysLeft: 1 | 2 | 3
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!to || !to.includes("@")) {
+      return { success: false, error: "Invalid email address" };
+    }
+
+    const subject =
+      daysLeft === 1
+        ? "Your StayDue Pro access ends today — renew now"
+        : `Your StayDue Pro has expired — ${daysLeft} days left to renew`;
+
+    const html = await render(GracePeriodEmail({ userName, daysLeft }));
+    const response = await resend.emails.send({ from: FROM, to, subject, html });
+
+    if (response.error) {
+      console.error("[resend/grace-period/error]", response.error);
+      return { success: false, error: String(response.error) };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resend/grace-period]", error instanceof Error ? error.message : String(error));
     return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }

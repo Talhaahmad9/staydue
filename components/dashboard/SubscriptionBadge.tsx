@@ -9,7 +9,11 @@ interface StatusResponse {
   hasPhone: boolean;
 }
 
-export default function SubscriptionBadge(): React.ReactElement | null {
+interface SubscriptionBadgeProps {
+  compact?: boolean;
+}
+
+export default function SubscriptionBadge({ compact = false }: SubscriptionBadgeProps): React.ReactElement | null {
   const [status, setStatus] = useState<StatusResponse | null>(null);
 
   useEffect(() => {
@@ -29,6 +33,28 @@ export default function SubscriptionBadge(): React.ReactElement | null {
   const { isPro, proDaysLeft, trialDaysLeft, hasPhone } = status;
 
   if (!hasPhone) return null;
+
+  if (compact) {
+    if (isPro) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand/15 text-brand border border-brand/30">
+          Pro
+        </span>
+      );
+    }
+    if (trialDaysLeft !== null && trialDaysLeft > 0) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          Trial
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-urgency-today border border-urgency-todayBorder text-urgency-todayText">
+        Ended
+      </span>
+    );
+  }
 
   if (isPro && proDaysLeft !== null) {
     return (

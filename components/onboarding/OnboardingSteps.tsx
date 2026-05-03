@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 
 import CalendarUrlForm from "@/components/onboarding/CalendarUrlForm";
 import PhoneNumberForm from "@/components/onboarding/PhoneNumberForm";
+
+const TUTORIAL_VIDEO_DESKTOP = "";
+const TUTORIAL_VIDEO_MOBILE = "";
 
 interface OnboardingStepsProps {
   admissionYears: string[];
@@ -17,10 +19,6 @@ export default function OnboardingSteps({ admissionYears }: OnboardingStepsProps
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-center mb-6">
-        <Image src="/staydue_logo.svg" alt="StayDue" width={130} height={44} priority />
-      </div>
-
       {/* Step indicator */}
       <div className="flex items-center gap-2 max-w-xl">
         <div className={`flex items-center gap-1.5 text-xs font-medium ${
@@ -51,10 +49,35 @@ export default function OnboardingSteps({ admissionYears }: OnboardingStepsProps
       </div>
 
       {phase === "calendar" ? (
-        <CalendarUrlForm
-          admissionYears={admissionYears}
-          onSuccess={() => setPhase("phone")}
-        />
+        <div className="space-y-6">
+          <CalendarUrlForm
+            admissionYears={admissionYears}
+            onSuccess={() => setPhase("phone")}
+          />
+          <div className="max-w-xl space-y-2">
+            <p className="text-xs font-medium uppercase tracking-widest text-text-muted">How it works</p>
+            {/* Mobile video — shown below md */}
+            <div className="w-full aspect-video rounded-xl overflow-hidden border border-line/50 md:hidden">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${TUTORIAL_VIDEO_MOBILE}?rel=0&modestbranding=1`}
+                title="How to get your Moodle calendar URL on mobile — StayDue"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+            {/* Desktop video — shown from md up */}
+            <div className="w-full aspect-video rounded-xl overflow-hidden border border-line/50 hidden md:block">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${TUTORIAL_VIDEO_DESKTOP}?rel=0&modestbranding=1`}
+                title="How to get your Moodle calendar URL — StayDue"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="space-y-3 max-w-xl">
           <PhoneNumberForm onVerified={() => router.push("/dashboard")} />

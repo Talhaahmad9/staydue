@@ -27,6 +27,7 @@ interface UserDocument {
   proExpiresAt: Date | null;
   trialStartedAt: Date | null;
   trialPhoneNumber: string | null;
+  graceEmailsSent: number;
   whatsappTrialUsed: number;
   lastWhatsappSentAt: Date | null;
   createdAt: Date;
@@ -100,6 +101,7 @@ const userSchema = new Schema<UserDocument>(
     proExpiresAt: { type: Date, default: null },
     trialStartedAt: { type: Date, default: null },
     trialPhoneNumber: { type: String, default: null },
+    graceEmailsSent: { type: Number, required: true, default: 0 },
     whatsappTrialUsed: { type: Number, required: true, default: 0 },
     lastWhatsappSentAt: { type: Date, default: null },
   },

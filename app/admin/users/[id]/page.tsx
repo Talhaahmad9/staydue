@@ -90,7 +90,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
       {(user.isPro || user.trialStartedAt) && (() => {
         const activeSub = user.subscriptions.find((s) => s.status === "active");
         const trialExpiresAt = user.trialStartedAt
-          ? new Date(new Date(user.trialStartedAt).getTime() + 7 * 24 * 60 * 60 * 1000)
+          ? new Date(new Date(user.trialStartedAt).getTime() + 30 * 24 * 60 * 60 * 1000)
           : null;
         return (
           <section className="bg-page-surface border border-line rounded-xl p-4 space-y-3">

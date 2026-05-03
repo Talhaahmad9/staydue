@@ -55,9 +55,9 @@ function MockDeadlineCard({ title, course, date, urgency, delay }: MockCardProps
 export default function HeroSection(): React.ReactElement {
   return (
     <section className="max-w-6xl mx-auto px-4 md:px-6 py-16 md:py-24">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
         {/* Left: copy */}
-        <div className="space-y-6">
+        <div className="relative z-10 space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -122,7 +122,7 @@ export default function HeroSection(): React.ReactElement {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="w-full"
+          className="absolute inset-0 z-0 flex items-center opacity-[0.12] blur-sm pointer-events-none lg:relative lg:inset-auto lg:z-auto lg:opacity-100 lg:blur-none lg:pointer-events-auto w-full"
         >
           <div className="bg-page-surface border border-line/50 rounded-xl p-4 md:p-5">
             <div className="flex items-center justify-between mb-4">

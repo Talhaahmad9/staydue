@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import Image from "next/image";
 import OnboardingSteps from "@/components/onboarding/OnboardingSteps";
 import PageTransition from "@/components/shared/PageTransition";
 import { auth } from "@/lib/auth";
@@ -40,8 +41,8 @@ export default async function OnboardingPage(): Promise<React.ReactElement> {
 
   return (
     <PageTransition>
-      <nav className="h-14 border-b border-line/50 bg-page-surface/80 backdrop-blur-sm sticky top-0 z-50 flex items-center px-6 gap-4">
-        <div className="text-sm font-medium text-text-primary">StayDue</div>
+      <nav className="h-14 border-b border-line/50 bg-page-surface/80 backdrop-blur-sm sticky top-0 z-50 flex items-center px-6">
+        <Image src="/staydue_logo.svg" alt="StayDue" width={130} height={44} priority className="h-auto w-[110px]" />
       </nav>
       <main className="min-h-screen bg-page-bg">
         <div className="mx-auto max-w-3xl px-6 py-8">

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Settings, LogOut } from "lucide-react";
 import ButtonLoader from "@/components/shared/loaders/ButtonLoader";
-import SubscriptionBadge from "@/components/dashboard/SubscriptionBadge";
 
 interface ProfileDropdownProps {
   userInitials: string;
@@ -75,9 +74,6 @@ export default function ProfileDropdown({
               {userName}
             </p>
             <p className="text-xs text-text-muted">Account owner</p>
-            <div className="mt-3">
-              <SubscriptionBadge />
-            </div>
           </div>
 
           <div className="py-2">

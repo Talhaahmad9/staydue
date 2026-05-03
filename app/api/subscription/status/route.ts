@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase, UserModel, SubscriptionModel } from "@/lib/mongodb";
 
-const TRIAL_DAYS = 7;
+const TRIAL_DAYS = 30;
 
 export async function GET(): Promise<NextResponse> {
   try {

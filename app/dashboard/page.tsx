@@ -4,6 +4,7 @@ import DeadlineList from "@/components/dashboard/DeadlineList";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import SettingsNavButton from "@/components/dashboard/SettingsNavButton";
 import ProfileDropdown from "@/components/dashboard/ProfileDropdown";
+import SubscriptionBadge from "@/components/dashboard/SubscriptionBadge";
 import { auth } from "@/lib/auth";
 import { UserModel, connectToDatabase } from "@/lib/mongodb";
 import { getDeadlinesForUser } from "@/lib/deadlines";
@@ -42,7 +43,8 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           <h1 className="text-lg font-medium text-text-primary">Your deadlines</h1>
           <div className="ml-auto flex items-center gap-3">
             <SettingsNavButton />
-            <div className="lg:hidden">
+            <div className="lg:hidden flex items-center gap-2">
+              <SubscriptionBadge compact />
               <ProfileDropdown userInitials={userInitials} userName={session.user.name ?? "User"} />
             </div>
           </div>

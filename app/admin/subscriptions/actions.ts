@@ -66,7 +66,7 @@ export async function approveSubscription(
 
     await UserModel.updateOne(
       { _id: sub.userId },
-      { $set: { isPro: true, proExpiresAt: endDate } }
+      { $set: { isPro: true, proExpiresAt: endDate, graceEmailsSent: 0 } }
     );
 
     // Fire-and-forget activation email — never throws
