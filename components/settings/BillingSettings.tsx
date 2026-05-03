@@ -100,6 +100,93 @@ export default function BillingSettings({ refreshKey = 0 }: BillingSettingsProps
           </p>
           <BillingUpgradeForm />
         </div>
+      ) : status?.trialDaysLeft === 0 ? (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Free trial ended</p>
+              <p className="text-xs text-text-muted mt-0.5">WhatsApp reminders are paused</p>
+            </div>
+            <span className="bg-urgency-today border border-urgency-todayBorder text-urgency-todayText text-xs font-medium px-2.5 py-0.5 rounded-full">
+              Expired
+            </span>
+          </div>
+          <p className="text-xs text-text-muted">
+            Your 7-day trial has ended. Upgrade to a paid plan to continue receiving WhatsApp reminders. Email reminders are still active.
+          </p>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-text-muted mb-3">Choose a plan</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={() => setSelectedPlan("monthly")}
+                className={`text-left p-4 rounded-xl border transition-colors ${
+                  selectedPlan === "monthly"
+                    ? "border-brand bg-brand-light"
+                    : "border-line/50 bg-page-surface hover:border-line-strong"
+                }`}
+              >
+                <p className="text-sm font-medium text-text-primary">Monthly</p>
+                <p className="text-lg font-medium text-text-primary mt-1">Rs 300</p>
+                <p className="text-xs text-text-muted mt-0.5">per month</p>
+              </button>
+              <button
+                onClick={() => setSelectedPlan("semester")}
+                className={`text-left p-4 rounded-xl border transition-colors ${
+                  selectedPlan === "semester"
+                    ? "border-brand bg-brand-light"
+                    : "border-line/50 bg-page-surface hover:border-line-strong"
+                }`}
+              >
+                <p className="text-sm font-medium text-text-primary">Semester</p>
+                <p className="text-lg font-medium text-text-primary mt-1">Rs 1000</p>
+                <p className="text-xs text-text-muted mt-0.5">4 months</p>
+              </button>
+            </div>
+          </div>
+          <BillingUpgradeForm plan={selectedPlan} />
+        </div>
+      ) : status?.trialDaysLeft !== null && (status?.trialDaysLeft ?? 0) > 0 ? (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Free trial</p>
+              <p className="text-xs text-text-muted mt-0.5">{status?.trialDaysLeft} days remaining</p>
+            </div>
+            <span className="bg-urgency-tomorrow border border-urgency-tomorrowBorder text-urgency-tomorrowText text-xs font-medium px-2.5 py-0.5 rounded-full">
+              Active
+            </span>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-text-muted mb-3">Choose a plan</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={() => setSelectedPlan("monthly")}
+                className={`text-left p-4 rounded-xl border transition-colors ${
+                  selectedPlan === "monthly"
+                    ? "border-brand bg-brand-light"
+                    : "border-line/50 bg-page-surface hover:border-line-strong"
+                }`}
+              >
+                <p className="text-sm font-medium text-text-primary">Monthly</p>
+                <p className="text-lg font-medium text-text-primary mt-1">Rs 300</p>
+                <p className="text-xs text-text-muted mt-0.5">per month</p>
+              </button>
+              <button
+                onClick={() => setSelectedPlan("semester")}
+                className={`text-left p-4 rounded-xl border transition-colors ${
+                  selectedPlan === "semester"
+                    ? "border-brand bg-brand-light"
+                    : "border-line/50 bg-page-surface hover:border-line-strong"
+                }`}
+              >
+                <p className="text-sm font-medium text-text-primary">Semester</p>
+                <p className="text-lg font-medium text-text-primary mt-1">Rs 1000</p>
+                <p className="text-xs text-text-muted mt-0.5">4 months</p>
+              </button>
+            </div>
+          </div>
+          <BillingUpgradeForm plan={selectedPlan} />
+        </div>
       ) : (
         <div className="space-y-6">
           <div>
