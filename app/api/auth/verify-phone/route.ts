@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase, UserModel } from "@/lib/mongodb";
+import { connectToDatabase, UserModel, RetrialAttemptModel } from "@/lib/mongodb";
 import { verifyOtp } from "@/utils/otp";
 
 const schema = z.object({
@@ -70,6 +70,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     const trialStartedAt = phoneAlreadyUsed
       ? new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000) // already expired
       : now; // fresh trial
+
+    if (phoneAlreadyUsed) {
+      RetrialAttemptModel.create({
+        phone: user.phone,
+        attemptedByUserId: session.user.id,
+        originalUserId: phoneAlreadyUsed._id,
+      }).catch((err: unknown) => console.error("[auth/retrial-log]", err));
+    }
 
     await UserModel.updateOne(
       { _id: session.user.id },

@@ -354,4 +354,29 @@ export const TestimonialModel: Model<TestimonialDocument> =
   mongoose.models.Testimonial ||
   mongoose.model<TestimonialDocument>("Testimonial", testimonialSchema);
 
-export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry, NotificationPreferences, SubscriptionDocument, DiscountCodeDocument, NotificationLogDocument, CronRunLogDocument, TestimonialDocument };
+// ---------------------------------------------------------------------------
+// RetrialAttempt — logged when a phone number already used for a trial is
+// verified again on a different account. The new account gets an expired trial
+// silently; this collection gives admin visibility into abuse patterns.
+// ---------------------------------------------------------------------------
+interface RetrialAttemptDocument {
+  phone: string;
+  attemptedByUserId: mongoose.Types.ObjectId;
+  originalUserId: mongoose.Types.ObjectId;
+  attemptedAt: Date;
+}
+
+const retrialAttemptSchema = new Schema<RetrialAttemptDocument>(
+  {
+    phone: { type: String, required: true, index: true },
+    attemptedByUserId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    originalUserId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  { timestamps: { createdAt: "attemptedAt", updatedAt: false } }
+);
+
+export const RetrialAttemptModel: Model<RetrialAttemptDocument> =
+  mongoose.models.RetrialAttempt ||
+  mongoose.model<RetrialAttemptDocument>("RetrialAttempt", retrialAttemptSchema);
+
+export type { UserDocument, DeadlineDocument, CourseCatalogDocument, CourseCatalogEntry, NotificationPreferences, SubscriptionDocument, DiscountCodeDocument, NotificationLogDocument, CronRunLogDocument, TestimonialDocument, RetrialAttemptDocument };
