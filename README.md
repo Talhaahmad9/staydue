@@ -241,8 +241,6 @@ Built to solve a real problem for real students. StayDue is a live product, not 
 **[staydue.app](https://staydue.app)**
 
 
-Live at **[staydue.app](https://staydue.app)** — built for IOBM students in Karachi, Pakistan.
-
 ---
 
 ## The Problem
