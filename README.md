@@ -239,7 +239,7 @@ Talha Ahmad — IOBM, Karachi, Pakistan.
 Built to solve a real problem for real students. StayDue is a live product, not a portfolio project.
 
 **[staydue.app](https://staydue.app)**
- Students paste their Moodle calendar export URL — StayDue parses their assignments, resolves full course names, and sends automatic reminders via WhatsApp and email before every due date. Overdue follow-ups are sent automatically too, so even past-due submissions can still be caught in time.
+
 
 Live at **[staydue.app](https://staydue.app)** — built for IOBM students in Karachi, Pakistan.
 
