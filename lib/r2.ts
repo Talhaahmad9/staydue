@@ -169,7 +169,7 @@ export async function getTestimonialPhotoUrl(
     const url = await getSignedUrl(
       client,
       new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }),
-      { expiresIn: 3600 },
+      { expiresIn: 604800 }, // 7 days — safe with daily ISR revalidation
     );
 
     return { success: true, url };

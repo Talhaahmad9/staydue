@@ -10,6 +10,8 @@ import LandingFooter from "@/components/landing/LandingFooter";
 import { connectToDatabase, TestimonialModel } from "@/lib/mongodb";
 import { getTestimonialPhotoUrl } from "@/lib/r2";
 
+export const revalidate = 86400; // regenerate once per day
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [

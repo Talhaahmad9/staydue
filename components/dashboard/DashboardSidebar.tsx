@@ -46,7 +46,7 @@ export default function DashboardSidebar({
             width={160}
             height={54}
             priority
-            className="w-full h-auto"
+            className="w-[130px] h-auto"
           />
         </div>
 

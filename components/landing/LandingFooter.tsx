@@ -18,7 +18,7 @@ export default function LandingFooter(): React.ReactElement {
             alt="StayDue"
             width={220}
             height={72}
-            className="h-auto opacity-80 w-[150px] md:w-[160px] lg:w-[220px]"
+            className="h-auto opacity-80 w-[95px] md:w-[110px] lg:w-[140px]"
           />
         </Link>
         <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2">

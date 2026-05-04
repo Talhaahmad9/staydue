@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import CalendarUrlForm from "@/components/onboarding/CalendarUrlForm";
 import PhoneNumberForm from "@/components/onboarding/PhoneNumberForm";
 
-const TUTORIAL_VIDEO_DESKTOP = "";
-const TUTORIAL_VIDEO_MOBILE = "";
+const TUTORIAL_VIDEO_DESKTOP = "uJg653lPHpc";
+const TUTORIAL_VIDEO_MOBILE = "XVgTEuW4zYI";
 
 interface OnboardingStepsProps {
   admissionYears: string[];

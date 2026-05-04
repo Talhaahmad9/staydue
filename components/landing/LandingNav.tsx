@@ -18,14 +18,14 @@ export default function LandingNav(): React.ReactElement {
   return (
     <nav className="border-b border-line/50 bg-page-surface/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center relative">
-        <Link href="/" className="shrink-0">
+        <Link href="/" className="shrink-0 self-stretch flex items-center">
           <Image
             src="/staydue_logo.svg"
             alt="StayDue"
             width={260}
             height={86}
             priority
-            className="h-auto w-[160px] md:w-[180px] lg:w-[260px]"
+            className="h-auto w-[100px] md:w-[120px] lg:w-[150px]"
           />
         </Link>
 
