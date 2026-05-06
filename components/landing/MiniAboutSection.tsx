@@ -23,7 +23,7 @@ export default function MiniAboutSection(): React.ReactElement {
           <p className="text-sm text-text-secondary leading-relaxed">
             StayDue started as a personal project by{" "}
             <a
-              href="https://talhaahmad.vercel.app"
+              href="https://talhaahmad.me"
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand hover:text-brand-hover transition-colors font-medium"

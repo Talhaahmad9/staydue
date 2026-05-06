@@ -34,7 +34,7 @@ export default function AboutPage(): React.ReactElement {
           <p>
             StayDue was built by{" "}
             <a
-              href="https://talhaahmad.vercel.app"
+              href="https://talhaahmad.me"
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand hover:text-brand-hover transition-colors font-medium"
