@@ -238,5 +238,5 @@ Talha Ahmad — IOBM, Karachi, Pakistan.
 
 Built to solve a real problem for real students. StayDue is a live product, not a portfolio project.
 
-**[staydue.app](https://staydue.app)**
+**[staydue.app](https://staydue.app)** · **[talhaahmad.me](https://talhaahmad.me)**
 
