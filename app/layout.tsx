@@ -50,6 +50,9 @@ export const metadata: Metadata = {
       "Sync your IOBM Moodle deadlines and get WhatsApp and email reminders before every due date.",
     images: ["/opengraph-image.png"],
   },
+  alternates: {
+    canonical: "/",
+  },
   robots: { index: true, follow: true },
   icons: {
     icon: "/favicon.svg",

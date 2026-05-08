@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import LandingNav from "@/components/landing/LandingNav";
 import HeroSection from "@/components/landing/HeroSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
@@ -9,6 +10,13 @@ import MiniAboutSection from "@/components/landing/MiniAboutSection";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { connectToDatabase, TestimonialModel } from "@/lib/mongodb";
 import { getTestimonialPhotoUrl } from "@/lib/r2";
+
+export const metadata: Metadata = {
+  title: "StayDue \u2014 Never miss a university deadline",
+  description:
+    "StayDue syncs your IOBM Moodle deadlines and sends WhatsApp and email reminders before every due date. Never miss an assignment again.",
+  alternates: { canonical: "https://staydue.app" },
+};
 
 export const revalidate = 86400; // regenerate once per day
 

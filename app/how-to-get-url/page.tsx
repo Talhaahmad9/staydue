@@ -3,9 +3,10 @@ import StaticPageLayout from "@/components/landing/StaticPageLayout";
 import TutorialContent from "@/components/onboarding/TutorialContent";
 
 export const metadata: Metadata = {
-  title: "How to get your Moodle calendar URL",
+  title: "How to Get Your Moodle URL",
   description:
-    "Step-by-step guide for IOBM students on how to find and copy the Moodle calendar export URL for StayDue.",
+    "Step-by-step guide to finding your IOBM Moodle calendar URL to connect with StayDue.",
+  alternates: { canonical: "https://staydue.app/how-to-get-url" },
 };
 
 export default function HowToGetUrlPage(): React.ReactElement {

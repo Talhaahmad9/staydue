@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import StaticPageLayout from "@/components/landing/StaticPageLayout";
 
 export const metadata: Metadata = {
-  title: "Terms of Service",
-  description: "Terms and conditions for using StayDue.",
+  title: "Terms & Conditions",
+  description: "Terms and conditions for StayDue.",
+  alternates: { canonical: "https://staydue.app/terms" },
 };
 
 export default function TermsPage(): React.ReactElement {

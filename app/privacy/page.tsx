@@ -3,7 +3,8 @@ import StaticPageLayout from "@/components/landing/StaticPageLayout";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "How StayDue collects, uses, and protects your information.",
+  description: "Privacy policy for StayDue.",
+  alternates: { canonical: "https://staydue.app/privacy" },
 };
 
 export default function PrivacyPage(): React.ReactElement {

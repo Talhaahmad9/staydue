@@ -3,8 +3,8 @@ import StaticPageLayout from "@/components/landing/StaticPageLayout";
 
 export const metadata: Metadata = {
   title: "About",
-  description:
-    "StayDue is a deadline reminder app built for university students on Moodle-based learning systems.",
+  description: "Learn about StayDue — the deadline reminder app built for IOBM students.",
+  alternates: { canonical: "https://staydue.app/about" },
 };
 
 export default function AboutPage(): React.ReactElement {
